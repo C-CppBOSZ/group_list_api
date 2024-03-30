@@ -189,9 +189,26 @@ namespace DB {
             }
         }
 
+        int countUsers() override {
+            try {
+                pqxx::work txn(conn);
+                pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
+                txn.commit();
+
+                if (!result.empty()) {
+                    return result[0][0].as<int>();
+                } else {
+                    return 0;
+                }
+            } catch (const std::exception &e) {
+                std::cerr << "Database error: " << e.what() << std::endl;
+                return 0;
+            }
+        }
+
         // role
 
-        void createRole(const std::string &name, long permission, bool isBase) override {
+        void createRole(const std::string &name, long permission, bool isBase = false) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -459,6 +476,40 @@ namespace DB {
             }
         }
 
+        long getUserPermissions(const std::string &userName) override {
+            try {
+                pqxx::work txn(conn);
+
+                pqxx::result userResult = txn.exec_params(
+                        "SELECT user_id FROM users WHERE name = $1",
+                        userName
+                );
+                if (userResult.empty()) {
+                    std::cerr << "User '" << userName << "' does not exist." << std::endl;
+                    return 0;
+                }
+                int userId = userResult[0]["user_id"].as<int>();
+
+                pqxx::result roleResult = txn.exec_params(
+                        "SELECT roles.permission "
+                        "FROM roles "
+                        "JOIN user_roles ON roles.role_id = user_roles.role_id "
+                        "WHERE user_roles.user_id = $1",
+                        userId
+                );
+
+                txn.commit();
+
+                long userPermissions = 0;
+                for (const auto &row : roleResult) {
+                    userPermissions |= row["permission"].as<long>();
+                }
+                return userPermissions;
+            } catch (const std::exception &e) {
+                std::cerr << "Database error: " << e.what() << std::endl;
+                return 0;
+            }
+        }
         // group
 
         void createGroup(const std::string &groupName) override {
@@ -543,7 +594,7 @@ namespace DB {
 
         // GroupUserBase
 
-        void addUserToGroup(const std::string &userName, const std::string &groupName) override {
+        void addUserToGroup(const std::string &userName, const std::string &groupName, long permission) override {
             try {
                 pqxx::work txn(conn);
 
@@ -566,12 +617,14 @@ namespace DB {
                 }
 
                 txn.exec_params(
-                        "INSERT INTO user_groups (user_id, group_id) VALUES ($1, $2)",
+                        "INSERT INTO user_groups (user_id, group_id, permission) "
+                        "VALUES ($1, $2, $3)",
                         userResult[0]["user_id"].as<int>(),
-                        groupResult[0]["group_id"].as<int>()
+                        groupResult[0]["group_id"].as<int>(),
+                        permission
                 );
                 txn.commit();
-                std::cout << "User '" << userName << "' added to group '" << groupName << "' successfully." << std::endl;
+                std::cout << "User added to group successfully." << std::endl;
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
             }
@@ -613,8 +666,8 @@ namespace DB {
             }
         }
 
-        std::vector<std::string> getUsersInGroup(const std::string &groupName) override {
-            std::vector<std::string> users;
+        std::vector<std::tuple<std::string, long>> getUsersInGroup(const std::string &groupName) override {
+            std::vector<std::tuple<std::string, long>> users;
 
             try {
                 pqxx::work txn(conn);
@@ -627,16 +680,19 @@ namespace DB {
                     std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
                     return users;
                 }
-                int groupId = groupResult[0]["group_id"].as<int>();
 
                 pqxx::result result = txn.exec_params(
-                        "SELECT u.name FROM users u INNER JOIN user_groups ug ON u.user_id = ug.user_id WHERE ug.group_id = $1",
-                        groupId
+                        "SELECT users.name, user_groups.permission "
+                        "FROM users "
+                        "JOIN user_groups ON users.user_id = user_groups.user_id "
+                        "JOIN groups ON user_groups.group_id = groups.group_id "
+                        "WHERE groups.group_name = $1",
+                        groupName
                 );
                 txn.commit();
 
                 for (const auto &row : result) {
-                    users.push_back(row["name"].as<std::string>());
+                    users.emplace_back(row["name"].as<std::string>(), row["permission"].as<long>());
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
@@ -676,6 +732,87 @@ namespace DB {
 
             return groups;
         }
+
+        bool isUserInGroup(const std::string &userName, const std::string &groupName) override {
+            try {
+                pqxx::work txn(conn);
+
+                pqxx::result userResult = txn.exec_params(
+                        "SELECT user_id FROM users WHERE name = $1",
+                        userName
+                );
+                if (userResult.empty()) {
+                    std::cerr << "User '" << userName << "' does not exist." << std::endl;
+                    return false;
+                }
+
+                pqxx::result groupResult = txn.exec_params(
+                        "SELECT group_id FROM groups WHERE group_name = $1",
+                        groupName
+                );
+                if (groupResult.empty()) {
+                    std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
+                    return false;
+                }
+
+                pqxx::result result = txn.exec_params(
+                        "SELECT COUNT(*) "
+                        "FROM user_groups "
+                        "WHERE user_id = $1 AND group_id = $2",
+                        userResult[0]["user_id"].as<int>(),
+                        groupResult[0]["group_id"].as<int>()
+                );
+                txn.commit();
+
+                return result[0][0].as<int>() > 0;
+            } catch (const std::exception &e) {
+                std::cerr << "Database error: " << e.what() << std::endl;
+                return false;
+            }
+        }
+
+        long getUserGroupPermission(const std::string &userName, const std::string &groupName) override {
+            try {
+                pqxx::work txn(conn);
+
+                pqxx::result userResult = txn.exec_params(
+                        "SELECT user_id FROM users WHERE name = $1",
+                        userName
+                );
+                if (userResult.empty()) {
+                    std::cerr << "User '" << userName << "' does not exist." << std::endl;
+                    return 0;
+                }
+
+                pqxx::result groupResult = txn.exec_params(
+                        "SELECT group_id FROM groups WHERE group_name = $1",
+                        groupName
+                );
+                if (groupResult.empty()) {
+                    std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
+                    return 0;
+                }
+
+                pqxx::result result = txn.exec_params(
+                        "SELECT permission "
+                        "FROM user_groups "
+                        "WHERE user_id = $1 AND group_id = $2",
+                        userResult[0]["user_id"].as<int>(),
+                        groupResult[0]["group_id"].as<int>()
+                );
+                txn.commit();
+
+                if (!result.empty()) {
+                    return result[0]["permission"].as<long>();
+                } else {
+                    return 0;
+                }
+            } catch (const std::exception &e) {
+                std::cerr << "Database error: " << e.what() << std::endl;
+                return 0;
+            }
+        }
+
     };
 }
 

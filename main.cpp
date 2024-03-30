@@ -20,5 +20,13 @@ int main() {
 
     DB::DBService db("dbname=group user=postgres password=postgres host=localhost port=5324");
 
+    if (db.countUsers() == 0){
+        db.createUser("root","root","root");
+        db.createRole("ROOT",LONG_LONG_MIN);
+        db.assignUserRole("root","ROOT");
+    }
+
+
+
     return 0;
 }

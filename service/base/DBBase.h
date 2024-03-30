@@ -31,13 +31,14 @@ namespace DB {
         virtual std::vector<std::tuple<int, std::string>> readAllUsers(UserSortBy sortBy = UserSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1) = 0;
         virtual void updateUserPassword(const std::string &name, const std::string &newPassword) = 0;
         virtual void deleteUser(const std::string &name) = 0;
+        virtual int countUsers() = 0;
 
         virtual ~UserCRUDBase() = default;
     };
 
     class RoleCRUDBase {
     public:
-        virtual void createRole(const std::string &name, long permission, bool isBase) = 0;
+        virtual void createRole(const std::string &name, long permission, bool isBase = false) = 0;
         virtual std::tuple<int, std::string, long, bool> readRole(const std::string &name) = 0;
         virtual std::vector<std::tuple<int, std::string, long, bool>> readAllRoles(RoleSortBy sortBy = RoleSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1, bool isBase = false) = 0;
         virtual void updateRolePermission(const std::string &name, long newPermission) = 0;
@@ -53,6 +54,7 @@ namespace DB {
         virtual std::vector<std::string> getUserRoles(const std::string &userName) = 0;
         virtual std::vector<std::string> getUsersWithRole(const std::string &roleName) = 0;
         virtual void removeUserRole(const std::string &userName, const std::string &roleName) = 0;
+        virtual long getUserPermissions(const std::string &userName) = 0;
 
         virtual ~UserRolesBase() = default;
     };
@@ -67,16 +69,6 @@ namespace DB {
 
         virtual ~GroupCRUDBase() = default;
     };
-
-//    class GroupUserBase {
-//    public:
-//        virtual void addUserToGroup(const std::string &userName, const std::string &groupName) = 0;
-//        virtual void removeUserFromGroup(const std::string &userName, const std::string &groupName) = 0;
-//        virtual std::vector<std::string> getUsersInGroup(const std::string &groupName) = 0;
-//        virtual std::vector<std::string> getGroupsForUser(const std::string &userName) = 0;
-//
-//        virtual ~GroupUserBase() = default;
-//    };
 
     class GroupUserBase {
     public:
