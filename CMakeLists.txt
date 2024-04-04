@@ -18,5 +18,5 @@ target_link_libraries(group_list_api PRIVATE PostgreSQL::PostgreSQL)
 add_subdirectory(lib/cpp-jwt)
 target_link_libraries(group_list_api PRIVATE cpp-jwt::cpp-jwt)
 
-target_link_libraries(group_list_api PRIVATE -lpqxx -lpq)
+target_link_libraries(group_list_api PRIVATE -lpqxx -lpq -lssl -lcrypto)
 

@@ -23,6 +23,8 @@ namespace DB {
             createSchema();
         }
 
+        ~DBService() override = default;
+
         void createSchema() {
             try {
                 pqxx::work txn(conn);
@@ -36,7 +38,7 @@ namespace DB {
                 txn.exec(R"(
                     CREATE TABLE IF NOT EXISTS users (
                         user_id SERIAL PRIMARY KEY,
-                        name VARCHAR(50) NOT NULL,
+                        name VARCHAR(50) NOT NULL UNIQUE,
                         password VARCHAR(255) NOT NULL,
                         salt VARCHAR(50) NOT NULL
                     )
@@ -76,7 +78,7 @@ namespace DB {
         // USERS
 
         // Create user
-        void createUser(const std::string &name, const std::string &password, const std::string &salt) override {
+        resDB<void> createUser(const std::string &name, const std::string &password, const std::string &salt) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -87,33 +89,41 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User created successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr,e.what());
             }
         }
 
         // Read user
-        std::tuple<int, std::string> readUser(const std::string &name) override {
+        resDB<std::tuple<int, std::string, std::string, std::string>> readUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
                 pqxx::result result = txn.exec_params(
-                        "SELECT user_id, name FROM users WHERE name = $1",
+                        "SELECT * FROM users WHERE name = $1",
                         name
                 );
                 txn.commit();
                 if (!result.empty()) {
-                    return std::make_tuple(result[0]["user_id"].as<int>(), result[0]["name"].as<std::string>());
+                     auto *tuple = new std::tuple(result[0]["user_id"].as<int>(),
+                                                                result[0]["name"].as<std::string>(),
+                                                                result[0]["password"].as<std::string>(),
+                                                                result[0]["salt"].as<std::string>());
+
+
+                    return make_res(tuple);
                 } else {
-                    return std::make_tuple(-1, "");
+                    return make_error<std::tuple<int, std::string, std::string, std::string>>(nullptr);
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return std::make_tuple(-1, "");
+                return make_error<std::tuple<int, std::string, std::string, std::string>>(nullptr);
             }
         }
 
-        std::vector<std::tuple<int, std::string>> readAllUsers(UserSortBy sortBy = UserSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1) override {
-            std::vector<std::tuple<int, std::string>> users;
+        resDB<std::vector<std::tuple<int, std::string>>> readAllUsers(UserSortBy sortBy = UserSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1) override {
+            auto *users = new std::vector<std::tuple<int, std::string>>();
 
             try {
                 pqxx::work txn(conn);
@@ -149,13 +159,17 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    users.emplace_back(row["user_id"].as<int>(), row["name"].as<std::string>());
+                    users->emplace_back(row["user_id"].as<int>(), row["name"].as<std::string>());
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::tuple<int, std::string>>>(nullptr,e.what());
             }
 
-            return users;
+            if (users->empty()){
+                return make_error<std::vector<std::tuple<int, std::string>>>(nullptr,"empty.");
+            }
+            return make_res(users);
         }
 
         // Update user password
@@ -205,6 +219,24 @@ namespace DB {
                 return 0;
             }
         }
+
+//        bool verifyPassword(const std::string& name, const std::string& password) {
+//            try {
+//                pqxx::nontransaction txn(conn);
+//                std::string query = "SELECT password, salt FROM users WHERE name = $1";
+//                pqxx::result res = txn.exec_params(query, name);
+//                if (res.size() == 1) {
+//                    std::string stored_password = res[0][0].as<std::string>();
+//                    std::string salt = res[0][1].as<std::string>();
+//                    std::string hashed_password = routes::generateHashedPassword(password, salt);
+//                    return stored_password == hashed_password;
+//                }
+//                return false;
+//            } catch (const std::exception& e) {
+//                std::cerr << "Database error: " << e.what() << std::endl;
+//                return false;
+//            }
+//        }
 
         // role
 
