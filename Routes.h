@@ -214,6 +214,8 @@ namespace routes {
                     for (const auto &item: users) {
                         vector_of_wvalue.push_back({{"name", std::get<1>(item)}});
                     }
+
+                    // TODO dodać do final pole z ilością elementów lub stron -- user.countUsers()
                     crow::json::wvalue final = vector_of_wvalue;
                     return crow::response(std::move(final));
                 });
@@ -226,7 +228,7 @@ namespace routes {
                                                                                      DB::RolePermission::UserD);
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
-
+                    // TODO usunąć usera z wszystkich relacji
                     user.deleteUser(name);
                     return crow::response(200);
                 });
@@ -259,6 +261,14 @@ namespace routes {
                 });
 
     }
+
+    void rolesRoutes(DB::RoleCRUDBase &role, DB::UserRolesBase &userRoles) {
+
+
+
+
+    }
+
 
 //inline MyApp& get_app() {
 //    static MyApp app;
