@@ -17,9 +17,9 @@
 #include "service/base/DBBase.h"
 
 
-namespace routes{
+namespace routes {
 
-static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
+    static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
 
     struct AuthorizationMW : crow::ILocalMiddleware {
         struct context {
@@ -35,7 +35,7 @@ static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
 
 //                req.add_header("name", value);
                 ctx.name = value;
-            }catch (const jwt::TokenExpiredError& e) {
+            } catch (const jwt::TokenExpiredError &e) {
                 res.code = 403;
                 res.body = "TokenExpiredError";
                 res.end();
@@ -51,7 +51,7 @@ static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
     };
 
 
-    typedef crow::App<crow::CORSHandler,AuthorizationMW> MyApp;
+    typedef crow::App<crow::CORSHandler, AuthorizationMW> MyApp;
 
     static MyApp app;
 
@@ -68,14 +68,13 @@ static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
 
         std::string random_string;
 
-        for (std::size_t i = 0; i < length; ++i)
-        {
+        for (std::size_t i = 0; i < length; ++i) {
             random_string += CHARACTERS[distribution(generator)];
         }
         return random_string;
     }
 
-    std::string generateHashedPassword(const std::string& password, const std::string& salt) {
+    std::string generateHashedPassword(const std::string &password, const std::string &salt) {
         std::string str = password + salt;
 
         unsigned char hash[MD5_DIGEST_LENGTH];
@@ -87,22 +86,35 @@ static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
 
         std::stringstream ss;
 
-        for(unsigned char i : hash){
+        for (unsigned char i: hash) {
             ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>( i );
         }
         return ss.str();
     }
 
-    void authorizationRoutes(DB::UserCRUDBase& user){
+    std::tuple<bool, crow::response> checkPermissions(DB::UserRolesBase &userRoles,const AuthorizationMW::context& ctx,long mask) {
+        const DB::resDB<long> &resDb = userRoles.getUserPermissions(ctx.name);
+        if (!resDb.ok) {
+            return std::make_tuple(false, crow::response(400, resDb.msg));
+        }
+        long permissions = *resDb.get;
+        if ((permissions & mask) == 0)
+            return std::make_tuple(false, crow::response(403));
+        return std::make_tuple(true, crow::response(200));
+    }
 
-        CROW_ROUTE(app,"/user/register").methods("POST"_method)
+    void authorizationRoutes(DB::UserCRUDBase &user) {
+
+        CROW_ROUTE(app, "/user/register").methods("POST"_method)
                 ([&](const crow::request &req) {
                     auto x = crow::json::load(req.body);
                     if (!x && !x.has("name") && !x.has("password"))
                         return crow::response(400);
                     std::string salt = generateSalt(50);
                     const std::string &password = generateHashedPassword(x["password"].s(), salt);
-                    user.createUser(x["name"].s(), password, salt);
+                    const DB::resDB<void> &resDb = user.createUser(x["name"].s(), password, salt);
+                    if (!resDb.ok)
+                        return crow::response(400, resDb.msg);
                     return crow::response(200);
                 });
 
@@ -113,47 +125,134 @@ static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
                     if (!x && !x.has("name") && !x.has("password"))
                         return crow::response(400);
                     std::string name = x["name"].s();
-                    const std::tuple<int, std::string, std::string, std::string> &readUser = user.readUser(name);
-                    if (std::get<2>(readUser) == generateHashedPassword(x["password"].s(),std::get<3>(readUser)))
+                    const auto &resDb = user.readUser(name);
+                    if (!resDb.ok) {
+                        return crow::response(400, resDb.msg);
+                    }
+                    const std::tuple<int, std::string, std::string, std::string> &readUser = *resDb.get;
+                    if (std::get<2>(readUser) == generateHashedPassword(x["password"].s(), std::get<3>(readUser)))
                         return crow::response(jwt::jwt_object{
                                 jwt::params::algorithm("HS256"), jwt::params::payload({{"name", name}}),
                                 jwt::params::secret(tokenKey)
                         }.add_claim("exp", std::chrono::system_clock::now() + 4h)
-                        .signature());
+                                                      .signature());
                     else
                         return crow::response(401);
                 });
 
         CROW_ROUTE(app, "/user/auth").methods("POST"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
-
                     auto ctx = app.get_context<AuthorizationMW>(req);
-
                     return crow::response(ctx.name);
                 });
 
     }
 
-    void usersRoutes(DB::UserCRUDBase& user,DB::UserRolesBase& userRoles){
+    void usersRoutes(DB::UserCRUDBase &user, DB::UserRolesBase &userRoles) {
+
+        CROW_ROUTE(app, "/user/all").methods("GET"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,DB::RolePermission::UserR);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    DB::UserSortBy sort = DB::UserSortBy::None;
+                    try {
+                        std::string sort_params = req.url_params.get("UserSortBy");
+                        if (!sort_params.empty()) {
+                            if (sort_params == "ID")
+                                sort = DB::UserSortBy::ID;
+                            if (sort_params == "NAME")
+                                sort = DB::UserSortBy::Name;
+                        }
+                    } catch (const std::exception &e) {
+
+                    }
+
+                    DB::SortOrder sortOrder = DB::SortOrder::Ascending;
+
+                    try {
+                        std::string sortOrder_params = req.url_params.get("SortOrder");
+                        if (!sortOrder_params.empty()) {
+                            if (sortOrder_params == "ASC")
+                                sortOrder = DB::SortOrder::Ascending;
+                            if (sortOrder_params == "DES")
+                                sortOrder = DB::SortOrder::Descending;
+                        }
+                    } catch (const std::exception &e) {
+
+                    }
+
+                    int pageSize = -1, pageNumber = 1;
+
+                    try {
+                        std::string pageSize_params = req.url_params.get("PageSize");
+                        std::string pageNumber_params = req.url_params.get("PageNumber");
+
+                        if (!pageSize_params.empty() && !pageNumber_params.empty()) {
+
+                                pageSize = std::stoi(pageSize_params);
+                                pageNumber = std::stoi(pageNumber_params);
+
+                        }
+                    } catch (const std::exception &e) {
+                        pageSize = -1;
+                        pageNumber = 1;
+                    }
+
+                    std::vector<std::tuple<int, std::string>> users;
+                    {
+                        const auto &resDb = user.readAllUsers(sort, sortOrder, pageSize, pageNumber);
+                        if (!resDb.ok) {
+                            return crow::response(400, resDb.msg);
+                        }
+                        users = *resDb.get;
+                    }
+                    std::vector<crow::json::wvalue> vector_of_wvalue = {};
+                    for (const auto &item: users) {
+                        vector_of_wvalue.push_back({{"name", std::get<1>(item)}});
+                    }
+                    crow::json::wvalue final = vector_of_wvalue;
+                    return crow::response(std::move(final));
+                });
+
 
         CROW_ROUTE(app, "/user/delete/<string>").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
-                ([&](const crow::request& req, std::string name) {
+                ([&](const crow::request &req, std::string name) {
                     auto ctx = app.get_context<AuthorizationMW>(req);
-                    long permissions = userRoles.getUserPermissions(ctx.name);
-                    if ((permissions & DB::RolePermission::UserD) == 0)
-                        return crow::response(403);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                                     DB::RolePermission::UserD);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
                     user.deleteUser(name);
                     return crow::response(200);
                 });
 
+        CROW_ROUTE(app, "/user/update").methods("PUT"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::UserU);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
 
+                    auto x = crow::json::load(req.body);
 
+                    if (!x && !x.has("password"))
+                        return crow::response(400);
+
+                    user.updateUserPassword(ctx.name,x["password"].s());
+                    return crow::response(200);
+                });
     }
 
-    void selfRoutes(DB::UserCRUDBase& user,DB::UserRolesBase& userRoles){
+    void selfRoutes(DB::UserCRUDBase &user, DB::UserRolesBase &userRoles) {
 
         CROW_ROUTE(app, "/self/delete").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
-                ([&](const crow::request& req) {
+                ([&](const crow::request &req) {
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     user.deleteUser(ctx.name);
                     return crow::response(200);
@@ -173,7 +272,6 @@ static std::string tokenKey = "j4kUQYTuYiowYY92sU23Wuqu8y1TYo";
 //}
 
 }
-
 
 
 #endif //ROUTES_H

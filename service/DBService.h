@@ -173,7 +173,7 @@ namespace DB {
         }
 
         // Update user password
-        void updateUserPassword(const std::string &name, const std::string &newPassword) override {
+        resDB<void> updateUserPassword(const std::string &name, const std::string &newPassword) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -183,13 +183,15 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User password updated successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
         // Delete user
-        void deleteUser(const std::string &name) override {
+        resDB<void> deleteUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -198,25 +200,30 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User deleted successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        int countUsers() override {
+
+        // Count users
+        resDB<int> countUsers() override {
             try {
                 pqxx::work txn(conn);
                 pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
                 txn.commit();
 
                 if (!result.empty()) {
-                    return result[0][0].as<int>();
+                    int count = result[0][0].as<int>();
+                    return make_res(new int(count));
                 } else {
-                    return 0;
+                    return make_res(new int(0));
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return 0;
+                return make_error<int>(nullptr, e.what());
             }
         }
 
@@ -240,7 +247,8 @@ namespace DB {
 
         // role
 
-        void createRole(const std::string &name, long permission, bool isBase = false) override {
+        // Create role
+        resDB<void> createRole(const std::string &name, long permission, bool isBase = false) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -251,12 +259,16 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Role created successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        std::tuple<int, std::string, long, bool> readRole(const std::string &name) override {
+
+        // Read role
+        resDB<std::tuple<int, std::string, long, bool>> readRole(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
                 pqxx::result result = txn.exec_params(
@@ -266,18 +278,26 @@ namespace DB {
                 txn.commit();
                 if (!result.empty()) {
                     auto row = result[0];
-                    return std::make_tuple(row["role_id"].as<int>(), row["role_name"].as<std::string>(), row["permission"].as<long>(), row["is_base"].as<bool>());
+                    auto* role = new std::tuple<int, std::string, long, bool>(
+                            row["role_id"].as<int>(),
+                            row["role_name"].as<std::string>(),
+                            row["permission"].as<long>(),
+                            row["is_base"].as<bool>()
+                    );
+                    return make_res(role);
                 } else {
-                    return std::make_tuple(-1, "", 0, false);
+                    return make_res<std::tuple<int, std::string, long, bool>>(nullptr);
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return std::make_tuple(-1, "", 0, false);
+                return make_error<std::tuple<int, std::string, long, bool>>(nullptr, e.what());
             }
         }
 
-        std::vector<std::tuple<int, std::string, long, bool>> readAllRoles(RoleSortBy sortBy = RoleSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1, bool isBase = false) override {
-            std::vector<std::tuple<int, std::string, long, bool>> roles;
+
+        // Read all roles
+        resDB<std::vector<std::tuple<int, std::string, long, bool>>> readAllRoles(RoleSortBy sortBy = RoleSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1, bool isBase = false) override {
+            auto roles = new std::vector<std::tuple<int, std::string, long, bool>>();
 
             try {
                 pqxx::work txn(conn);
@@ -317,16 +337,18 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    roles.emplace_back(row["role_id"].as<int>(), row["role_name"].as<std::string>(), row["permission"].as<long>(), row["is_base"].as<bool>());
+                    roles->emplace_back(row["role_id"].as<int>(), row["role_name"].as<std::string>(), row["permission"].as<long>(), row["is_base"].as<bool>());
                 }
+                return make_res(roles);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::tuple<int, std::string, long, bool>>>(nullptr, e.what());
             }
-
-            return roles;
         }
 
-        void updateRolePermission(const std::string &name, long newPermission) override {
+
+        // Update role permission
+        resDB<void> updateRolePermission(const std::string &name, long newPermission) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -336,12 +358,15 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Role permission updated successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        void updateRoleIsBase(const std::string &name, bool newIsBase) override {
+        // Update role is_base
+        resDB<void> updateRoleIsBase(const std::string &name, bool newIsBase) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -351,12 +376,15 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Role is_base updated successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        void deleteRole(const std::string &name) override {
+        // Delete role
+        resDB<void> deleteRole(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -365,14 +393,18 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Role deleted successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
+
         // UserRolesBase
 
-        void assignUserRole(const std::string &userName, const std::string &roleName) override {
+        // Assign user role
+        resDB<void> assignUserRole(const std::string &userName, const std::string &roleName) override {
             try {
                 pqxx::work txn(conn);
 
@@ -382,7 +414,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User not found." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "User not found.");
                 }
                 int userId = userResult[0]["user_id"].as<int>();
 
@@ -392,7 +424,7 @@ namespace DB {
                 );
                 if (roleResult.empty()) {
                     std::cerr << "Role not found." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "Role not found.");
                 }
                 int roleId = roleResult[0]["role_id"].as<int>();
 
@@ -403,13 +435,17 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User role assigned successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        std::vector<std::string> getUserRoles(const std::string &userName) override {
-            std::vector<std::string> roles;
+
+        // Get user roles
+        resDB<std::vector<std::string>> getUserRoles(const std::string &userName) override {
+            auto roles = new std::vector<std::string>();
 
             try {
                 pqxx::work txn(conn);
@@ -420,7 +456,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User not found." << std::endl;
-                    return roles;
+                    return make_res<std::vector<std::string>>(roles);
                 }
                 int userId = userResult[0]["user_id"].as<int>();
 
@@ -431,17 +467,19 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    roles.push_back(row["role_name"].as<std::string>());
+                    roles->push_back(row["role_name"].as<std::string>());
                 }
+                return make_res(roles);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::string>>(nullptr, e.what());
             }
-
-            return roles;
         }
 
-        std::vector<std::string> getUsersWithRole(const std::string &roleName) override {
-            std::vector<std::string> users;
+
+        // Get users with role
+        resDB<std::vector<std::string>> getUsersWithRole(const std::string &roleName) override {
+            auto users = new std::vector<std::string>();
 
             try {
                 pqxx::work txn(conn);
@@ -452,7 +490,7 @@ namespace DB {
                 );
                 if (roleResult.empty()) {
                     std::cerr << "Role not found." << std::endl;
-                    return users;
+                    return make_res<std::vector<std::string>>(users);
                 }
                 int roleId = roleResult[0]["role_id"].as<int>();
 
@@ -463,16 +501,18 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    users.push_back(row["name"].as<std::string>());
+                    users->push_back(row["name"].as<std::string>());
                 }
+                return make_res(users);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::string>>(nullptr, e.what());
             }
-
-            return users;
         }
 
-        void removeUserRole(const std::string &userName, const std::string &roleName) override {
+
+        // Remove user role
+        resDB<void> removeUserRole(const std::string &userName, const std::string &roleName) override {
             try {
                 pqxx::work txn(conn);
 
@@ -482,7 +522,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User not found." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "User not found.");
                 }
                 int userId = userResult[0]["user_id"].as<int>();
 
@@ -492,7 +532,7 @@ namespace DB {
                 );
                 if (roleResult.empty()) {
                     std::cerr << "Role not found." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "Role not found.");
                 }
                 int roleId = roleResult[0]["role_id"].as<int>();
 
@@ -503,12 +543,15 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User role removed successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        long getUserPermissions(const std::string &userName) override {
+        // Get user permissions
+        resDB<long> getUserPermissions(const std::string &userName) override {
             try {
                 pqxx::work txn(conn);
 
@@ -518,7 +561,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User '" << userName << "' does not exist." << std::endl;
-                    return 0;
+                    return make_error<long>(nullptr, "User '" + userName + "' does not exist.");
                 }
                 int userId = userResult[0]["user_id"].as<int>();
 
@@ -536,15 +579,17 @@ namespace DB {
                 for (const auto &row : roleResult) {
                     userPermissions |= row["permission"].as<long>();
                 }
-                return userPermissions;
+                return make_res(new long(userPermissions));
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return 0;
+                return make_error<long>(nullptr, e.what());
             }
         }
+
         // group
 
-        void createGroup(const std::string &groupName) override {
+        // Create group
+        resDB<void> createGroup(const std::string &groupName) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -553,12 +598,16 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Group created successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        std::tuple<int, std::string> readGroup(const std::string &groupName) override {
+
+        // Read group
+        resDB<std::tuple<int, std::string>> readGroup(const std::string &groupName) override {
             try {
                 pqxx::work txn(conn);
                 pqxx::result result = txn.exec_params(
@@ -567,18 +616,21 @@ namespace DB {
                 );
                 txn.commit();
                 if (!result.empty()) {
-                    return std::make_tuple(result[0]["group_id"].as<int>(), result[0]["group_name"].as<std::string>());
+                    int groupId = result[0]["group_id"].as<int>();
+                    std::string name = result[0]["group_name"].as<std::string>();
+                    return make_res(new std::tuple(std::make_tuple(groupId, name)));
                 } else {
-                    return std::make_tuple(-1, "");
+                    return make_error<std::tuple<int, std::string>>(nullptr, "empty.");
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return std::make_tuple(-1, "");
+                return make_error<std::tuple<int, std::string>>(nullptr, e.what());
             }
         }
 
-        std::vector<std::tuple<int, std::string>> readAllGroups() override {
-            std::vector<std::tuple<int, std::string>> groups;
+        // Read all groups
+        resDB<std::vector<std::tuple<int, std::string>>> readAllGroups() override {
+            auto groups = new std::vector<std::tuple<int, std::string>>();
 
             try {
                 pqxx::work txn(conn);
@@ -586,16 +638,17 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    groups.emplace_back(row["group_id"].as<int>(), row["group_name"].as<std::string>());
+                    groups->emplace_back(row["group_id"].as<int>(), row["group_name"].as<std::string>());
                 }
+                return make_res(groups);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::tuple<int, std::string>>>(nullptr, e.what());
             }
-
-            return groups;
         }
 
-        void updateGroupName(const std::string &oldName, const std::string &newName) override {
+        // Update group name
+        resDB<void> updateGroupName(const std::string &oldName, const std::string &newName) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -605,12 +658,15 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Group name updated successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        void deleteGroup(const std::string &groupName) override {
+        // Delete group
+        resDB<void> deleteGroup(const std::string &groupName) override {
             try {
                 pqxx::work txn(conn);
                 txn.exec_params(
@@ -619,14 +675,18 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "Group deleted successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
+
         // GroupUserBase
 
-        void addUserToGroup(const std::string &userName, const std::string &groupName, long permission) override {
+        // Add user to group
+        resDB<void> addUserToGroup(const std::string &userName, const std::string &groupName, long permission) override {
             try {
                 pqxx::work txn(conn);
 
@@ -636,7 +696,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User '" << userName << "' does not exist." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "User '" + userName + "' does not exist.");
                 }
 
                 pqxx::result groupResult = txn.exec_params(
@@ -645,7 +705,7 @@ namespace DB {
                 );
                 if (groupResult.empty()) {
                     std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "Group '" + groupName + "' does not exist.");
                 }
 
                 txn.exec_params(
@@ -657,12 +717,16 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User added to group successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        void removeUserFromGroup(const std::string &userName, const std::string &groupName) override {
+
+        // Remove user from group
+        resDB<void> removeUserFromGroup(const std::string &userName, const std::string &groupName) override {
             try {
                 pqxx::work txn(conn);
 
@@ -672,7 +736,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User '" << userName << "' does not exist." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "User '" + userName + "' does not exist.");
                 }
                 int userId = userResult[0]["user_id"].as<int>();
 
@@ -682,7 +746,7 @@ namespace DB {
                 );
                 if (groupResult.empty()) {
                     std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
-                    return;
+                    return make_error<void>(nullptr, "Group '" + groupName + "' does not exist.");
                 }
                 int groupId = groupResult[0]["group_id"].as<int>();
 
@@ -693,13 +757,17 @@ namespace DB {
                 );
                 txn.commit();
                 std::cout << "User '" << userName << "' removed from group '" << groupName << "' successfully." << std::endl;
+                return make_res<void>(nullptr);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<void>(nullptr, e.what());
             }
         }
 
-        std::vector<std::tuple<std::string, long>> getUsersInGroup(const std::string &groupName) override {
-            std::vector<std::tuple<std::string, long>> users;
+
+        // Get users in group
+        resDB<std::vector<std::tuple<std::string, long>>> getUsersInGroup(const std::string &groupName) override {
+            auto users = new std::vector<std::tuple<std::string, long>>();
 
             try {
                 pqxx::work txn(conn);
@@ -710,7 +778,7 @@ namespace DB {
                 );
                 if (groupResult.empty()) {
                     std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
-                    return users;
+                    return make_error<std::vector<std::tuple<std::string, long>>>(nullptr, "Group '" + groupName + "' does not exist.");
                 }
 
                 pqxx::result result = txn.exec_params(
@@ -724,17 +792,19 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    users.emplace_back(row["name"].as<std::string>(), row["permission"].as<long>());
+                    users->emplace_back(row["name"].as<std::string>(), row["permission"].as<long>());
                 }
+                return make_res(users);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::tuple<std::string, long>>>(nullptr, e.what());
             }
-
-            return users;
         }
 
-        std::vector<std::string> getGroupsForUser(const std::string &userName) override {
-            std::vector<std::string> groups;
+
+        // Get groups for user
+        resDB<std::vector<std::string>> getGroupsForUser(const std::string &userName) override {
+            auto groups = new std::vector<std::string>();
 
             try {
                 pqxx::work txn(conn);
@@ -745,7 +815,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User '" << userName << "' does not exist." << std::endl;
-                    return groups;
+                    return make_error<std::vector<std::string>>(nullptr, "User '" + userName + "' does not exist.");
                 }
                 int userId = userResult[0]["user_id"].as<int>();
 
@@ -756,16 +826,18 @@ namespace DB {
                 txn.commit();
 
                 for (const auto &row : result) {
-                    groups.push_back(row["group_name"].as<std::string>());
+                    groups->push_back(row["group_name"].as<std::string>());
                 }
+                return make_res(groups);
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
+                return make_error<std::vector<std::string>>(nullptr, e.what());
             }
-
-            return groups;
         }
 
-        bool isUserInGroup(const std::string &userName, const std::string &groupName) override {
+
+        // Check if user is in group
+        resDB<bool> isUserInGroup(const std::string &userName, const std::string &groupName) override {
             try {
                 pqxx::work txn(conn);
 
@@ -775,7 +847,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User '" << userName << "' does not exist." << std::endl;
-                    return false;
+                    return make_res(new bool(false));
                 }
 
                 pqxx::result groupResult = txn.exec_params(
@@ -784,7 +856,7 @@ namespace DB {
                 );
                 if (groupResult.empty()) {
                     std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
-                    return false;
+                    return make_res(new bool(false));
                 }
 
                 pqxx::result result = txn.exec_params(
@@ -796,14 +868,16 @@ namespace DB {
                 );
                 txn.commit();
 
-                return result[0][0].as<int>() > 0;
+                return make_res(new bool(result[0][0].as<int>() > 0));
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return false;
+                return make_error<bool>(nullptr, e.what());
             }
         }
 
-        long getUserGroupPermission(const std::string &userName, const std::string &groupName) override {
+
+        // Get user group permission
+        resDB<long> getUserGroupPermission(const std::string &userName, const std::string &groupName) override {
             try {
                 pqxx::work txn(conn);
 
@@ -813,7 +887,7 @@ namespace DB {
                 );
                 if (userResult.empty()) {
                     std::cerr << "User '" << userName << "' does not exist." << std::endl;
-                    return 0;
+                    return make_res(new long(0));
                 }
 
                 pqxx::result groupResult = txn.exec_params(
@@ -822,7 +896,7 @@ namespace DB {
                 );
                 if (groupResult.empty()) {
                     std::cerr << "Group '" << groupName << "' does not exist." << std::endl;
-                    return 0;
+                    return make_res(new long(0));
                 }
 
                 pqxx::result result = txn.exec_params(
@@ -835,15 +909,16 @@ namespace DB {
                 txn.commit();
 
                 if (!result.empty()) {
-                    return result[0]["permission"].as<long>();
+                    return make_res(new long(result[0]["permission"].as<long>()));
                 } else {
-                    return 0;
+                    return make_res(new long(0));
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
-                return 0;
+                return make_error<long>(nullptr, e.what());
             }
         }
+
 
     };
 }

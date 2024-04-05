@@ -20,7 +20,13 @@ int main() {
 
     DB::DBService db("dbname=group user=postgres password=postgres host=localhost port=5324");
 
-    if (db.countUsers() == 0){
+    const DB::resDB<int> &users = db.countUsers();
+    if (!users.ok){
+        std::cerr << users.msg;
+        return 1;
+    }
+
+    if (*users.get == 0){
         const std::string &salt = routes::generateSalt(50);
         db.createUser("root",routes::generateHashedPassword("root",salt),salt);
         db.createRole("ROOT",0x1111111111111111111111111111111111111111111111111111111111111111);

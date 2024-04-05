@@ -75,56 +75,56 @@ namespace DB {
         virtual resDB<void> createUser(const std::string &name, const std::string &password, const std::string &salt) = 0;
         virtual resDB<std::tuple<int, std::string, std::string, std::string>> readUser(const std::string &name) = 0;
         virtual resDB<std::vector<std::tuple<int, std::string>>> readAllUsers(UserSortBy sortBy = UserSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1) = 0;
-        virtual void updateUserPassword(const std::string &name, const std::string &newPassword) = 0;
-        virtual void deleteUser(const std::string &name) = 0;
-        virtual int countUsers() = 0;
-//        virtual bool verifyPassword(const std::string& name, const std::string& password) = 0;
+        virtual resDB<void> updateUserPassword(const std::string &name, const std::string &newPassword) = 0;
+        virtual resDB<void> deleteUser(const std::string &name) = 0;
+        virtual resDB<int> countUsers() = 0;
+//        virtual resDB<bool> verifyPassword(const std::string& name, const std::string& password) = 0;
 
         virtual ~UserCRUDBase() = default;
     };
 
     class RoleCRUDBase {
     public:
-        virtual void createRole(const std::string &name, long permission, bool isBase = false) = 0;
-        virtual std::tuple<int, std::string, long, bool> readRole(const std::string &name) = 0;
-        virtual std::vector<std::tuple<int, std::string, long, bool>> readAllRoles(RoleSortBy sortBy = RoleSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1, bool isBase = false) = 0;
-        virtual void updateRolePermission(const std::string &name, long newPermission) = 0;
-        virtual void updateRoleIsBase(const std::string &name, bool newIsBase) = 0;
-        virtual void deleteRole(const std::string &name) = 0;
+        virtual resDB<void> createRole(const std::string &name, long permission, bool isBase = false) = 0;
+        virtual resDB<std::tuple<int, std::string, long, bool>> readRole(const std::string &name) = 0;
+        virtual resDB<std::vector<std::tuple<int, std::string, long, bool>>> readAllRoles(RoleSortBy sortBy = RoleSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1, int pageNumber = 1, bool isBase = false) = 0;
+        virtual resDB<void> updateRolePermission(const std::string &name, long newPermission) = 0;
+        virtual resDB<void> updateRoleIsBase(const std::string &name, bool newIsBase) = 0;
+        virtual resDB<void> deleteRole(const std::string &name) = 0;
 
         virtual ~RoleCRUDBase() = default;
     };
 
     class UserRolesBase {
     public:
-        virtual void assignUserRole(const std::string &userName, const std::string &roleName) = 0;
-        virtual std::vector<std::string> getUserRoles(const std::string &userName) = 0;
-        virtual std::vector<std::string> getUsersWithRole(const std::string &roleName) = 0;
-        virtual void removeUserRole(const std::string &userName, const std::string &roleName) = 0;
-        virtual long getUserPermissions(const std::string &userName) = 0;
+        virtual resDB<void> assignUserRole(const std::string &userName, const std::string &roleName) = 0;
+        virtual resDB<std::vector<std::string>> getUserRoles(const std::string &userName) = 0;
+        virtual resDB<std::vector<std::string>> getUsersWithRole(const std::string &roleName) = 0;
+        virtual resDB<void> removeUserRole(const std::string &userName, const std::string &roleName) = 0;
+        virtual resDB<long> getUserPermissions(const std::string &userName) = 0;
 
         virtual ~UserRolesBase() = default;
     };
 
     class GroupCRUDBase {
     public:
-        virtual void createGroup(const std::string &groupName) = 0;
-        virtual std::tuple<int, std::string> readGroup(const std::string &groupName) = 0;
-        virtual std::vector<std::tuple<int, std::string>> readAllGroups() = 0;
-        virtual void updateGroupName(const std::string &oldName, const std::string &newName) = 0;
-        virtual void deleteGroup(const std::string &groupName) = 0;
+        virtual resDB<void> createGroup(const std::string &groupName) = 0;
+        virtual resDB<std::tuple<int, std::string>> readGroup(const std::string &groupName) = 0;
+        virtual resDB<std::vector<std::tuple<int, std::string>>> readAllGroups() = 0;
+        virtual resDB<void> updateGroupName(const std::string &oldName, const std::string &newName) = 0;
+        virtual resDB<void> deleteGroup(const std::string &groupName) = 0;
 
         virtual ~GroupCRUDBase() = default;
     };
 
     class GroupUserBase {
     public:
-        virtual void addUserToGroup(const std::string &userName, const std::string &groupName, long permission) = 0;
-        virtual void removeUserFromGroup(const std::string &userName, const std::string &groupName) = 0;
-        virtual std::vector<std::tuple<std::string, long>> getUsersInGroup(const std::string &groupName) = 0;
-        virtual std::vector<std::string> getGroupsForUser(const std::string &userName) = 0;
-        virtual bool isUserInGroup(const std::string &userName, const std::string &groupName) = 0;
-        virtual long getUserGroupPermission(const std::string &userName, const std::string &groupName) = 0;
+        virtual resDB<void> addUserToGroup(const std::string &userName, const std::string &groupName, long permission) = 0;
+        virtual resDB<void> removeUserFromGroup(const std::string &userName, const std::string &groupName) = 0;
+        virtual resDB<std::vector<std::tuple<std::string, long>>> getUsersInGroup(const std::string &groupName) = 0;
+        virtual resDB<std::vector<std::string>> getGroupsForUser(const std::string &userName) = 0;
+        virtual resDB<bool> isUserInGroup(const std::string &userName, const std::string &groupName) = 0;
+        virtual resDB<long> getUserGroupPermission(const std::string &userName, const std::string &groupName) = 0;
 
         virtual ~GroupUserBase() = default;
     };
