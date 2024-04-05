@@ -243,10 +243,15 @@ namespace routes {
 
                     auto x = crow::json::load(req.body);
 
-                    if (!x && !x.has("password"))
+                    if (!x && !x.has("name"))
                         return crow::response(400);
-
-                    user.updateUserPassword(ctx.name,x["password"].s());
+                    
+                    if (x.has("password"))
+                    user.updateUserPassword(x["name"].s(),x["password"].s());
+                    // TODO updateUserName
+//                    if (x.has("newName"))
+//                    user.updateUserName(x["name"].s(),x["newName"].s());
+                    
                     return crow::response(200);
                 });
     }
@@ -259,13 +264,68 @@ namespace routes {
                     user.deleteUser(ctx.name);
                     return crow::response(200);
                 });
+        
+        // TODO /self/update
 
     }
 
     void rolesRoutes(DB::RoleCRUDBase &role, DB::UserRolesBase &userRoles) {
 
+        CROW_ROUTE(app, "/role/all").methods("GET"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
 
+                    // TODO todo
+                    return crow::response(200);
+                });
 
+        CROW_ROUTE(app, "/role/create").methods("POST"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+                    
+                    if (!x && !x.has("name") && !x.has("permissions") && !x.has("isBase"))
+                        return crow::response(400);
+                    
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::RoleCU | x["permissions"].i());
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+                    
+                    // TODO sprawdzić czy nie wystempują erory 500 przy zmianie typu (x["permissions"].i(),x["isBase"].b())
+                    // TODO sprawdzić czy się udało 
+                    role.createRole(x["name"].s(),x["permissions"].i(),x["isBase"].b());
+                    
+                    return crow::response(200);
+                });
+
+        CROW_ROUTE(app, "/role/delete").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("name"))
+                        return crow::response(400);
+
+                    const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["name"].s());
+
+                    if (!resDb.ok)
+                        return crow::response(400,resDb.msg);
+
+                    long permission = std::get<2>(*resDb.get);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::RoleD | permission);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    // TODO usunąć wszystkie relacje 
+                    // TODO sprawdzić czy sie udało 
+                    role.deleteRole(x["name"].s());
+
+                    return crow::response(200);
+                });
 
     }
 
