@@ -420,13 +420,79 @@ namespace routes {
 
     void rolesUsersRoutes(DB::RoleCRUDBase &role, DB::UserRolesBase &userRoles, DB::UserCRUDBase &user) {
 
-        CROW_ROUTE(app, "/relation/roles/delete").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+        CROW_ROUTE(app, "/relation/roles/remove").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
 
                     auto x = crow::json::load(req.body);
 
                     if (!x && !x.has("name") && !x.has("role"))
                         return crow::response(400);
+
+                    const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["role"].s());
+                    const DB::resDB<std::tuple<int, std::string, std::string, std::string>> &resDb1 = user.readUser(x["name"].s());
+
+                    if (!resDb.ok || !resDb1.ok)
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::assignUserRole | std::get<2>(*resDb.get) );
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    // TODO sprawdzić czy sie udało
+                    userRoles.removeUserRole(std::get<1>(*resDb.get),std::get<1>(*resDb.get));
+
+                    return crow::response(200);
+                });
+
+        CROW_ROUTE(app, "/relation/roles/assign").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("name") && !x.has("role"))
+                        return crow::response(400);
+
+                    const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["role"].s());
+                    const DB::resDB<std::tuple<int, std::string, std::string, std::string>> &resDb1 = user.readUser(x["name"].s());
+
+                    if (!resDb.ok || !resDb1.ok)
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::assignUserRole | std::get<2>(*resDb.get) );
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    // TODO sprawdzić czy sie udało
+                    userRoles.assignUserRole(std::get<1>(*resDb.get),std::get<1>(*resDb.get));
+
+                    return crow::response(200);
+                });
+
+        CROW_ROUTE(app, "/relation/roles/t").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("role"))
+                        return crow::response(400);
+
+                    const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["role"].s());
+
+                    if (!resDb.ok )
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::RoleR | DB::RolePermission::UserR );
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    // TODO sprawdzić czy sie udało
+                    userRoles.assignUserRole(std::get<1>(*resDb.get),std::get<1>(*resDb.get));
 
                     return crow::response(200);
                 });
