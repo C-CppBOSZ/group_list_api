@@ -286,7 +286,7 @@ namespace DB {
                     );
                     return make_res(role);
                 } else {
-                    return make_res<std::tuple<int, std::string, long, bool>>(nullptr);
+                    return make_error<std::tuple<int, std::string, long, bool>>(nullptr);
                 }
             } catch (const std::exception &e) {
                 std::cerr << "Database error: " << e.what() << std::endl;
