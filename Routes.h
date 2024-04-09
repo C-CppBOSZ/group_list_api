@@ -505,7 +505,7 @@ namespace routes {
                     return crow::response(std::move(final));
                 });
 
-        CROW_ROUTE(app, "/relation/roles/getUsersWithRole").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+        CROW_ROUTE(app, "/relation/roles/getUserRoles").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
 
                     auto x = crow::json::load(req.body);

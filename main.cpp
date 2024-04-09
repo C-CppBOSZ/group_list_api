@@ -36,6 +36,7 @@ int main() {
     routes::authorizationRoutes(db);
     routes::usersRoutes(db,db);
     routes::selfRoutes(db,db);
+    routes::rolesUsersRoutes(db,db,db);
 
 
     routes::app.port(2050).multithreaded().run();
