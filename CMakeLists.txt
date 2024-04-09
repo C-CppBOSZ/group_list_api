@@ -15,7 +15,7 @@ target_link_libraries(group_list_api PUBLIC Crow::Crow)
 find_package(PostgreSQL REQUIRED)
 target_link_libraries(group_list_api PRIVATE PostgreSQL::PostgreSQL)
 
-add_subdirectory(mylib/cpp-jwt)
+add_subdirectory(cpp-jwt)
 target_link_libraries(group_list_api PRIVATE cpp-jwt::cpp-jwt)
 
 target_link_libraries(group_list_api PRIVATE -lpqxx -lpq -lssl -lcrypto)
