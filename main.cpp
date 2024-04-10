@@ -29,14 +29,19 @@ int main() {
     if (*users.get == 0){
         const std::string &salt = routes::generateSalt(50);
         db.createUser("root",routes::generateHashedPassword("root",salt),salt);
-        db.createRole("ROOT",0x1111111111111111111111111111111111111111111111111111111111111111);
+        db.createRole("ROOT",DB::RolePermission::All);
         db.assignUserRole("root","ROOT");
     }
 
     routes::authorizationRoutes(db);
     routes::usersRoutes(db,db);
     routes::selfRoutes(db,db);
+    routes::rolesRoutes(db,db);
     routes::rolesUsersRoutes(db,db,db);
+    routes::groupsRoutes(db,db,db);
+
+
+
 
 
     routes::app.port(2050).multithreaded().run();

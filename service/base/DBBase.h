@@ -61,6 +61,10 @@ namespace DB {
         long GroupR =    0x10000000;
         long GroupCU =   0x100000000;
         long GroupD =    0x1000000000;
+        long addUserToGroup = 0x10000000000;
+        long removeUserFromGroup = 0x100000000000;
+        long GroupUserR = 0x1000000000000;
+        long All =                 0x1111111111111;
     };
 
     namespace GroupPermission {
@@ -68,6 +72,8 @@ namespace DB {
         long addUserToGroup = 0x1;
         long removeUserFromGroup = 0x10;
         long R = 0x100;
+        long D = 0x1000;
+        long All = 0x1111;
     };
 
     class UserCRUDBase {
