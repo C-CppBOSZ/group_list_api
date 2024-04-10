@@ -92,7 +92,8 @@ namespace routes {
         return ss.str();
     }
 
-    std::tuple<bool, crow::response> checkPermissions(DB::UserRolesBase &userRoles,const AuthorizationMW::context& ctx,long mask) {
+    std::tuple<bool, crow::response>
+    checkPermissions(DB::UserRolesBase &userRoles, const AuthorizationMW::context &ctx, long mask) {
         const DB::resDB<long> &resDb = userRoles.getUserPermissions(ctx.name);
         if (!resDb.ok) {
             return std::make_tuple(false, crow::response(400, resDb.msg));
@@ -154,7 +155,8 @@ namespace routes {
                 ([&](const crow::request &req) {
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
-                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,DB::RolePermission::UserR);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::UserR);
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
@@ -193,8 +195,8 @@ namespace routes {
 
                         if (!pageSize_params.empty() && !pageNumber_params.empty()) {
 
-                                pageSize = std::stoi(pageSize_params);
-                                pageNumber = std::stoi(pageNumber_params);
+                            pageSize = std::stoi(pageSize_params);
+                            pageNumber = std::stoi(pageNumber_params);
 
                         }
                     } catch (const std::exception &e) {
@@ -225,7 +227,7 @@ namespace routes {
                 ([&](const crow::request &req, std::string name) {
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                                     DB::RolePermission::UserD);
+                                                                              DB::RolePermission::UserD);
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
                     // TODO usunąć usera z wszystkich relacji
@@ -245,13 +247,13 @@ namespace routes {
 
                     if (!x && !x.has("name"))
                         return crow::response(400);
-                    
+
                     if (x.has("password"))
-                    user.updateUserPassword(x["name"].s(),x["password"].s());
+                        user.updateUserPassword(x["name"].s(), x["password"].s());
                     // TODO updateUserName
 //                    if (x.has("newName"))
 //                    user.updateUserName(x["name"].s(),x["newName"].s());
-                    
+
                     return crow::response(200);
                 });
     }
@@ -264,7 +266,7 @@ namespace routes {
                     user.deleteUser(ctx.name);
                     return crow::response(200);
                 });
-        
+
         // TODO /self/update
 
     }
@@ -275,7 +277,8 @@ namespace routes {
                 ([&](const crow::request &req) {
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
-                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,DB::RolePermission::RoleR);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::RoleR);
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
@@ -333,7 +336,9 @@ namespace routes {
                     }
                     std::vector<crow::json::wvalue> vector_of_wvalue = {};
                     for (const auto &item: roles) {
-                        vector_of_wvalue.push_back({{"name", std::get<1>(item)},{"permission",std::get<2>(item)},{"is_base",std::get<3>(item)}});
+                        vector_of_wvalue.push_back({{"name",       std::get<1>(item)},
+                                                    {"permission", std::get<2>(item)},
+                                                    {"is_base",    std::get<3>(item)}});
                     }
 
                     // TODO dodać do final pole z ilością elementów lub stron -- role.count
@@ -345,20 +350,21 @@ namespace routes {
                 ([&](const crow::request &req) {
 
                     auto x = crow::json::load(req.body);
-                    
+
                     if (!x && !x.has("name") && !x.has("permissions") && !x.has("isBase"))
                         return crow::response(400);
-                    
+
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                              DB::RolePermission::RoleCU | x["permissions"].i());
+                                                                              DB::RolePermission::RoleCU |
+                                                                              x["permissions"].i());
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
-                    
+
                     // TODO sprawdzić czy nie wystempują erory 500 przy zmianie typu (x["permissions"].i(),x["isBase"].b())
                     // TODO sprawdzić czy się udało 
-                    role.createRole(x["name"].s(),x["permissions"].i(),x["isBase"].b());
-                    
+                    role.createRole(x["name"].s(), x["permissions"].i(), x["isBase"].b());
+
                     return crow::response(200);
                 });
 
@@ -372,7 +378,8 @@ namespace routes {
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                              DB::RolePermission::RoleCU | x["permissions"].i());
+                                                                              DB::RolePermission::RoleCU |
+                                                                              x["permissions"].i());
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
@@ -380,10 +387,10 @@ namespace routes {
                     // TODO sprawdzić czy się udało
 
                     if (x.has("permissions"))
-                        role.updateRolePermission(x["name"].s(),x["permissions"].i());
+                        role.updateRolePermission(x["name"].s(), x["permissions"].i());
 
                     if (x.has("isBase"))
-                        role.updateRoleIsBase(x["name"].s(),x["isBase"].b());
+                        role.updateRoleIsBase(x["name"].s(), x["isBase"].b());
 
                     return crow::response(200);
                 });
@@ -399,7 +406,7 @@ namespace routes {
                     const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["name"].s());
 
                     if (!resDb.ok)
-                        return crow::response(400,resDb.msg);
+                        return crow::response(400, resDb.msg);
 
                     long permission = std::get<2>(*resDb.get);
 
@@ -416,7 +423,7 @@ namespace routes {
                     return crow::response(200);
                 });
 
-        }
+    }
 
     void rolesUsersRoutes(DB::RoleCRUDBase &role, DB::UserRolesBase &userRoles, DB::UserCRUDBase &user) {
 
@@ -429,24 +436,26 @@ namespace routes {
                         return crow::response(400);
 
                     const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["role"].s());
-                    const DB::resDB<std::tuple<int, std::string, std::string, std::string>> &resDb1 = user.readUser(x["name"].s());
+                    const DB::resDB<std::tuple<int, std::string, std::string, std::string>> &resDb1 = user.readUser(
+                            x["name"].s());
 
                     if (!resDb.ok || !resDb1.ok)
                         return crow::response(400);
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                              DB::RolePermission::assignUserRole | std::get<2>(*resDb.get) );
+                                                                              DB::RolePermission::assignUserRole |
+                                                                              std::get<2>(*resDb.get));
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
                     // TODO sprawdzić czy sie udało
-                    userRoles.removeUserRole(std::get<1>(*resDb.get),std::get<1>(*resDb.get));
+                    userRoles.removeUserRole(std::get<1>(*resDb.get), std::get<1>(*resDb.get));
 
                     return crow::response(200);
                 });
 
-        CROW_ROUTE(app, "/relation/roles/assign").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+        CROW_ROUTE(app, "/relation/roles/assign").methods("PUT"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
 
                     auto x = crow::json::load(req.body);
@@ -455,24 +464,26 @@ namespace routes {
                         return crow::response(400);
 
                     const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["role"].s());
-                    const DB::resDB<std::tuple<int, std::string, std::string, std::string>> &resDb1 = user.readUser(x["name"].s());
+                    const DB::resDB<std::tuple<int, std::string, std::string, std::string>> &resDb1 = user.readUser(
+                            x["name"].s());
 
                     if (!resDb.ok || !resDb1.ok)
                         return crow::response(400);
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                              DB::RolePermission::assignUserRole | std::get<2>(*resDb.get) );
+                                                                              DB::RolePermission::assignUserRole |
+                                                                              std::get<2>(*resDb.get));
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
                     // TODO sprawdzić czy sie udało
-                    userRoles.assignUserRole(std::get<1>(*resDb.get),std::get<1>(*resDb.get));
+                    userRoles.assignUserRole(std::get<1>(*resDb.get), std::get<1>(*resDb.get));
 
                     return crow::response(200);
                 });
 
-        CROW_ROUTE(app, "/relation/roles/getUsersWithRole").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+        CROW_ROUTE(app, "/relation/roles/getUsersWithRole").methods("GET"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
 
                     auto x = crow::json::load(req.body);
@@ -482,18 +493,19 @@ namespace routes {
 
                     const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["role"].s());
 
-                    if (!resDb.ok )
+                    if (!resDb.ok)
                         return crow::response(400);
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                              DB::RolePermission::RoleR | DB::RolePermission::UserR );
+                                                                              DB::RolePermission::RoleR |
+                                                                              DB::RolePermission::UserR);
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
                     const DB::resDB<std::vector<std::string>> &resDb1 = userRoles.getUsersWithRole(x["role"].s());
 
-                    if (!resDb1.ok )
+                    if (!resDb1.ok)
                         return crow::response(400);
 
                     std::vector<crow::json::wvalue> vector_of_wvalue = {};
@@ -505,7 +517,7 @@ namespace routes {
                     return crow::response(std::move(final));
                 });
 
-        CROW_ROUTE(app, "/relation/roles/getUserRoles").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+        CROW_ROUTE(app, "/relation/roles/getUserRoles").methods("GET"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
 
                     auto x = crow::json::load(req.body);
@@ -515,18 +527,19 @@ namespace routes {
 
                     const DB::resDB<std::tuple<int, std::string, long, bool>> &resDb = role.readRole(x["name"].s());
 
-                    if (!resDb.ok )
+                    if (!resDb.ok)
                         return crow::response(400);
 
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
-                                                                              DB::RolePermission::RoleR | DB::RolePermission::UserR );
+                                                                              DB::RolePermission::RoleR |
+                                                                              DB::RolePermission::UserR);
                     if (!std::get<0>(tuple))
                         return std::move(std::get<1>(tuple));
 
                     const DB::resDB<std::vector<std::string>> &resDb1 = userRoles.getUserRoles(x["name"].s());
 
-                    if (!resDb1.ok )
+                    if (!resDb1.ok)
                         return crow::response(400);
 
                     std::vector<crow::json::wvalue> vector_of_wvalue = {};
@@ -537,6 +550,234 @@ namespace routes {
                     crow::json::wvalue final = vector_of_wvalue;
                     return crow::response(std::move(final));
                 });
+
+    }
+
+    void groupsRoutes(DB::GroupCRUDBase &group, DB::UserRolesBase &userRoles, DB::GroupUserBase &groupUser) {
+
+        CROW_ROUTE(app, "/group/all").methods("GET"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::GroupR);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+                    
+                    const auto &resDb = group.readAllGroups();
+                    if (!resDb.ok) {
+                        return crow::response(400, resDb.msg);
+                    }
+                    std::vector<crow::json::wvalue> vector_of_wvalue = {};
+                    for (const auto &item: *resDb.get) {
+                        vector_of_wvalue.push_back({{"name",std::get<1>(item)}});
+                    }
+
+                    // TODO dodać do final pole z ilością elementów lub stron -- role.count
+                    crow::json::wvalue final = vector_of_wvalue;
+                    return crow::response(std::move(final));
+                });
+
+        CROW_ROUTE(app, "/group/create").methods("POST"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("name"))
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::GroupCU);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    const DB::resDB<long> &resDb = userRoles.getUserPermissions(ctx.name);
+                    if (resDb.ok)
+                        return crow::response(400);
+                    
+                    long per = *resDb.get;
+                    
+                    group.createGroup(x["name"].s());
+                    {
+                        using namespace DB::GroupPermission;
+                        groupUser.addUserToGroup(ctx.name, x["name"].s(),All & ((per & DB::RolePermission::GroupD) == 0? All : (!D)));
+                    }
+                    
+                    return crow::response(200);
+                });
+
+//        CROW_ROUTE(app, "/group/update").methods("PUT"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+//                ([&](const crow::request &req) {
+//
+//                    auto x = crow::json::load(req.body);
+//
+//                    if (!x && !x.has("name"))
+//                        return crow::response(400);
+//
+//                    auto ctx = app.get_context<AuthorizationMW>(req);
+//                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+//                                                                              DB::RolePermission::RoleCU |
+//                                                                              x["permissions"].i());
+//                    if (!std::get<0>(tuple))
+//                        return std::move(std::get<1>(tuple));
+//
+//                    // TODO sprawdzić czy nie wystempują erory 500 przy zmianie typu (x["permissions"].i(),x["isBase"].b())
+//                    // TODO sprawdzić czy się udało
+//
+//                    if (x.has("permissions"))
+//                        role.updateRolePermission(x["name"].s(), x["permissions"].i());
+//
+//                    if (x.has("isBase"))
+//                        role.updateRoleIsBase(x["name"].s(), x["isBase"].b());
+//
+//                    return crow::response(200);
+//                });
+
+        CROW_ROUTE(app, "/group/delete").methods("DELETE"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("name"))
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+                    
+                    const DB::resDB<std::tuple<int, std::string>> &resDb = group.readGroup(x["name"].s());
+
+                    const DB::resDB<long> &resDb1 = groupUser.getUserGroupPermission(ctx.name, x["name"].s());
+
+                    if (!resDb.ok || !resDb1.ok)
+                        return crow::response(400, resDb.msg);
+
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::GroupD);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    if ((((*resDb1.get) & DB::GroupPermission::D) == 0))
+                        return crow::response(400);
+
+                    // TODO sprawdzić czy sie udało
+                    // TODO usunąć wszystkie relacje
+                    group.deleteGroup(x["name"].s());
+
+                    return crow::response(200);
+                });
+
+        CROW_ROUTE(app, "/relation/groups/addUserToGroup").methods("PUT"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("groupName") && !x.has("userName"))
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+
+                    const DB::resDB<std::tuple<int, std::string>> &resDb = group.readGroup(x["groupName"].s());
+
+                    const DB::resDB<long> &resDb1 = groupUser.getUserGroupPermission(ctx.name, x["groupName"].s());
+
+                    if (!resDb.ok || !resDb1.ok)
+                        return crow::response(400, resDb.msg);
+
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::addUserToGroup);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    if ((((*resDb1.get) & DB::GroupPermission::addUserToGroup) == 0))
+                        return crow::response(400);
+
+                    // TODO sprawdzić czy user istnieje
+                    // TODO sprawdzić czy sie udało
+                    groupUser.addUserToGroup(x["userName"].s(),x["groupName"].s(),DB::GroupPermission::None);
+
+                    return crow::response(200);
+                });
+
+        CROW_ROUTE(app, "/relation/groups/removeUserFromGroup").methods("PUT"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("groupName") && !x.has("userName"))
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+
+                    const DB::resDB<std::tuple<int, std::string>> &resDb = group.readGroup(x["groupName"].s());
+
+                    const DB::resDB<long> &resDb1 = groupUser.getUserGroupPermission(ctx.name, x["groupName"].s());
+
+                    if (!resDb.ok || !resDb1.ok)
+                        return crow::response(400, resDb.msg);
+
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::removeUserFromGroup);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    if ((((*resDb1.get) & DB::GroupPermission::removeUserFromGroup) == 0))
+                        return crow::response(400);
+
+                    // TODO sprawdzić czy user istnieje
+                    // TODO sprawdzić czy sie udało
+                    // TODO nie wie ja pierdole skopiowałem to gówno z góry trzeba to całe pewnie zmienić nie myśle 
+                    groupUser.removeUserFromGroup(x["userName"].s(),x["groupName"].s());
+                    
+                    return crow::response(200);
+                });
+
+        CROW_ROUTE(app, "/relation/groups/getUsersInGroup").methods("PUT"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
+                ([&](const crow::request &req) {
+
+                    auto x = crow::json::load(req.body);
+
+                    if (!x && !x.has("groupName"))
+                        return crow::response(400);
+
+                    auto ctx = app.get_context<AuthorizationMW>(req);
+
+                    const DB::resDB<std::tuple<int, std::string>> &resDb = group.readGroup(x["groupName"].s());
+
+                    const DB::resDB<long> &resDb1 = groupUser.getUserGroupPermission(ctx.name, x["groupName"].s());
+
+                    if (!resDb.ok || !resDb1.ok)
+                        return crow::response(400, resDb.msg);
+
+                    std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
+                                                                              DB::RolePermission::GroupUserR);
+                    if (!std::get<0>(tuple))
+                        return std::move(std::get<1>(tuple));
+
+                    if ((((*resDb1.get) & DB::GroupPermission::R) == 0))
+                        return crow::response(400);
+
+                    // TODO sprawdzić czy user istnieje
+                    // TODO sprawdzić czy sie udało
+                    // TODO nie wie ja pierdole skopiowałem to gówno z góry trzeba to całe pewnie zmienić nie myśle 
+                    const DB::resDB<std::vector<std::tuple<std::string, long>>> &resDb2 = groupUser.getUsersInGroup(
+                            x["userName"].s());
+
+                    if (!resDb2.ok) {
+                        return crow::response(400, resDb2.msg);
+                    }
+                    std::vector<crow::json::wvalue> vector_of_wvalue = {};
+                    for (const auto &item: *resDb2.get) {
+                        vector_of_wvalue.push_back({{"name",std::get<0>(item)},{"permission",std::get<1>(item)}});
+                    }
+
+                    // TODO dodać do final pole z ilością elementów lub stron -- role.count
+                    crow::json::wvalue final = vector_of_wvalue;
+                    return crow::response(std::move(final));
+
+                    return crow::response(200);
+                });
+        
+        
 
     }
 
