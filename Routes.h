@@ -128,7 +128,7 @@ namespace routes {
                     std::string name = x["name"].s();
                     const auto &resDb = user.readUser(name);
                     if (!resDb.ok) {
-                        return crow::response(400, resDb.msg);
+                        return crow::response(401, resDb.msg);
                     }
                     const std::tuple<int, std::string, std::string, std::string> &readUser = *resDb.get;
                     if (std::get<2>(readUser) == generateHashedPassword(x["password"].s(), std::get<3>(readUser)))
