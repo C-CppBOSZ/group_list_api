@@ -100,6 +100,7 @@ namespace DB {
         resDB<std::tuple<int, std::string, std::string, std::string>> readUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
+
                 pqxx::result result = txn.exec_params(
                         "SELECT * FROM users WHERE name = $1",
                         name
