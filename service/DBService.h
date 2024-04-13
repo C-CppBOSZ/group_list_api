@@ -111,7 +111,8 @@ namespace DB {
             createSchema();
 
 
-            std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "};
+            std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# "};
+            // std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "}; // TODO drugi argument daje error trzeba sprawdzić  czy można wywołać DEC bez drugiego argumentu albo jak dać drugi argument
             std::pair<std::string, std::string> paginatSQL = {"Paginated", "LIMIT $# OFFSET $# "};
             std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
             const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
@@ -154,6 +155,14 @@ namespace DB {
                 //     salt
                 // );
                 txn.exec_prepared("createUser", name, password, salt);
+                // std::vector<std::string> par = {name,password,salt};
+                // txn.exec_prepared("createUser",pqxx::prepare::make_dynamic_params(par.begin(), par.end()));
+                // pqxx::params params;
+                // params.append(name);
+                // params.append(password);
+                // params.append(salt);
+                // txn.exec_prepared("createUser",params); // todo to przykładowe wywołania z dynamicznym argumentem przydadzą sie pużniejj przy sortowaniu
+
                 txn.commit();
                 std::cout << "User created successfully." << std::endl;
                 return make_res<void>(nullptr);
