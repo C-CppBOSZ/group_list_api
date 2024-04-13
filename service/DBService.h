@@ -161,6 +161,7 @@ namespace DB {
                                                                         int pageSize = -1,
                                                                         int pageNumber = 1) override {
             auto *users = new std::vector<std::tuple<int, std::string> >();
+            auto *users1 = new std::vector<std::tuple<int, std::string> >();
 
             try {
                 pqxx::work txn(conn);
@@ -197,7 +198,6 @@ namespace DB {
                 // std::string query = "SELECT user_id, name FROM users " + sortClause + " " + limitClause;
                 // pqxx::result result = txn.exec(query);
                 pqxx::result result = txn.exec_prepared(statement,params);
-                txn.commit();
 
                 for (const auto &row: result) {
                     users->emplace_back(row["user_id"].as<int>(), row["name"].as<std::string>());
