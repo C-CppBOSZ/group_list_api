@@ -6,6 +6,7 @@
 #define DBSERVICE_H
 #include <iostream>
 #include <ostream>
+#include <regex>
 #include <string>
 #include <pqxx/pqxx>
 #include <tuple>
@@ -19,26 +20,38 @@ namespace DB {
     private:
         pqxx::connection conn;
 
-        void prepareSQLStatements(const std::vector<std::pair<std::string,std::string>>& list) {
+        void prepareSQLStatements(const std::vector<std::pair<std::string, std::string> > &list) {
             for (const auto &[fst, snd]: list) {
-                conn.prepare(fst,snd);
+                conn.prepare(fst, snd);
             }
         }
 
-        static std::vector<std::pair<std::string,std::string>> prepareDynamicSQLStatements(const std::string& nameBase,const std::string &definitionBase,const std::vector<std::pair<std::string,std::string>> &dynamicSQL) {
-            std::vector<std::pair<std::string,std::string>> query = {};
+        static std::vector<std::pair<std::string, std::string> > prepareDynamicSQLStatements(
+            const std::string &nameBase, const std::string &definitionBase,
+            const std::vector<std::pair<std::string, std::string> > &dynamicSQL) {
+            std::vector<std::pair<std::string, std::string> > query = {};
             const int size = static_cast<int>(std::pow(2, dynamicSQL.size()));
             query.reserve(size);
             for (int i = 0; i < size; ++i) {
                 std::pair<std::string, std::string> sql = {nameBase, definitionBase};
                 for (int j = 0; j < dynamicSQL.size(); ++j) {
-                    if ( (i & static_cast<int>(std::pow(2,j))) != 0){
+                    if ((i & static_cast<int>(std::pow(2, j))) != 0) {
                         sql.first.append(dynamicSQL[j].first);
                         sql.second.append(dynamicSQL[j].second);
                     }
                 }
+
+                int count = 0;
+                size_t pos = 0;
+
+                while ((pos = sql.second.find("#", pos)) != std::string::npos) {
+                    count++;
+                    sql.second.replace(pos,1,std::to_string(count));
+                }
+
                 query.emplace_back(sql);
             }
+
             return query;
         }
 
@@ -91,20 +104,21 @@ namespace DB {
                 std::cerr << "Database error: " << e.what() << std::endl;
             }
         }
+
     public:
         explicit DBService(const std::string &connection_string)
             : conn(connection_string) {
             createSchema();
 
 
-            std::pair<std::string,std::string> sortSQL = {"Sorted","ORDER BY $# $# "};
-            std::pair<std::string,std::string> paginatSQL = {"Paginated","LIMIT $# OFFSET $# "};
-            const std::vector<std::vector<std::pair<std::string,std::string>>> defSQL = {
+            std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "};
+            std::pair<std::string, std::string> paginatSQL = {"Paginated", "LIMIT $# OFFSET $# "};
+            const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
                 {
-                    {"readUser","SELECT * FROM users WHERE name = $1"},
-                    {"createUser","INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
+                    {"readUser", "SELECT * FROM users WHERE name = $1"},
+                    {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
                 },
-                prepareDynamicSQLStatements("readAllUsers","SELECT user_id, name FROM users ",{sortSQL,paginatSQL}),
+                prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {sortSQL, paginatSQL}),
             };
 
             prepareSQLStatements(
@@ -138,7 +152,7 @@ namespace DB {
                 //     password,
                 //     salt
                 // );
-                txn.exec_prepared("createUser",name,password,salt);
+                txn.exec_prepared("createUser", name, password, salt);
                 txn.commit();
                 std::cout << "User created successfully." << std::endl;
                 return make_res<void>(nullptr);
