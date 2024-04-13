@@ -25,14 +25,21 @@ namespace DB {
             }
         }
 
-        std::vector<std::pair<std::string,std::string>> prepareDynamicSQLStatements(std::string nameBase,std::string definitionBase,std::vector<std::pair<std::string,std::string>> dynamicSQL) {
-            std::vector<std::pair<std::string,std::string>> sql = {};
-            const int size = std::pow(2,dynamicSQL.size());
-            sql.reserve(size);
-            for (auto dynamic_sql : dynamicSQL) {
-                // TODO algorytm dodawający
+        static std::vector<std::pair<std::string,std::string>> prepareDynamicSQLStatements(const std::string& nameBase,const std::string &definitionBase,const std::vector<std::pair<std::string,std::string>> &dynamicSQL) {
+            std::vector<std::pair<std::string,std::string>> query = {};
+            const int size = static_cast<int>(std::pow(2, dynamicSQL.size()));
+            query.reserve(size);
+            for (int i = 0; i < size; ++i) {
+                std::pair<std::string, std::string> sql = {nameBase, definitionBase};
+                for (int j = 0; j < dynamicSQL.size(); ++j) {
+                    if ( (i & static_cast<int>(std::pow(2,j))) != 0){
+                        sql.first.append(dynamicSQL[j].first);
+                        sql.second.append(dynamicSQL[j].second);
+                    }
+                }
+                query.emplace_back(sql);
             }
-
+            return query;
         }
 
         void createSchema() {
@@ -89,12 +96,15 @@ namespace DB {
             : conn(connection_string) {
             createSchema();
 
+
+            std::pair<std::string,std::string> sortSQL = {"Sorted","ORDER BY $# $# "};
+            std::pair<std::string,std::string> paginatSQL = {"Paginated","LIMIT $# OFFSET $# "};
             const std::vector<std::vector<std::pair<std::string,std::string>>> defSQL = {
                 {
                     {"readUser","SELECT * FROM users WHERE name = $1"},
+                    {"createUser","INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
                 },
-                prepareDynamicSQLStatements(),
-                prepareDynamicSQLStatements()
+                prepareDynamicSQLStatements("readAllUsers","SELECT user_id, name FROM users ",{sortSQL,paginatSQL}),
             };
 
             prepareSQLStatements(
@@ -122,12 +132,13 @@ namespace DB {
         resDB<void> createUser(const std::string &name, const std::string &password, const std::string &salt) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)",
-                    name,
-                    password,
-                    salt
-                );
+                // txn.exec_params(
+                //     "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)",
+                //     name,
+                //     password,
+                //     salt
+                // );
+                txn.exec_prepared("createUser",name,password,salt);
                 txn.commit();
                 std::cout << "User created successfully." << std::endl;
                 return make_res<void>(nullptr);
