@@ -38,31 +38,49 @@ namespace DB {
         return query;
     }
 
-    static std::vector<std::pair<std::string, std::string> > prepareDynamicSQLStatementsComplex(
-            const std::string &nameBase, const std::string &definitionBase,
-            const std::vector<std::pair<std::string, std::string> > &dynamicSQL) {
-        std::vector<std::pair<std::string, std::string> > query = {};
-        const int size = static_cast<int>(std::pow(2, dynamicSQL.size()));
-        query.reserve(size);
-        for (int i = 0; i < size; ++i) {
-            std::pair<std::string, std::string> sql = {nameBase, definitionBase};
-            for (int j = 0; j < dynamicSQL.size(); ++j) {
+    template<typename T>
+    concept PairOrVectorPair = std::is_same_v<T, std::pair<std::string, std::string>> ||
+                           std::is_same_v<T, std::vector<std::pair<std::string, std::string>>>;
+
+    template<PairOrVectorPair Arg>
+    static void addArgToQuery(const std::string &nameBase, const std::string &definitionBase,Arg arg,const size_t &size,std::vector<std::pair<std::string, std::string>> &query,const int & i) {
+
+        std::pair<std::string, std::string> sql = {nameBase, definitionBase};
+
+
+        for (int j = 0; j < size; ++j) {
+            if constexpr(std::is_same_v<Arg, std::pair<std::string, std::string>>) {
                 if ((i & static_cast<int>(std::pow(2, j))) != 0) {
-                    sql.first.append(dynamicSQL[j].first);
-                    sql.second.append(dynamicSQL[j].second);
+                    sql.first.append(arg.first);
+                    sql.second.append(arg.second);
+                }
+            } else if constexpr(std::is_same_v<Arg, std::vector<std::pair<std::string, std::string>>>) {
+                if ((i & static_cast<int>(std::pow(2, j))) != 0) {
+                    for (const auto &pair : arg) {
+                        query.push_back(pair);
+                    }
                 }
             }
-
-            int count = 0;
-            size_t pos = 0;
-
-            while ((pos = sql.second.find("#", pos)) != std::string::npos) {
-                count++;
-                sql.second.replace(pos,1,std::to_string(count));
-            }
-
-            query.emplace_back(sql);
         }
+
+        int count = 0;
+        size_t pos = 0;
+
+        while ((pos = sql.second.find("#", pos)) != std::string::npos) {
+            count++;
+            sql.second.replace(pos,1,std::to_string(count));
+        }
+
+        query.emplace_back(sql);
+
+    }
+
+    template<PairOrVectorPair... Args>
+    static std::vector<std::pair<std::string, std::string>> prepareDynamicSQLStatementsComplex(
+            const std::string &nameBase, const std::string &definitionBase, Args... args) {
+        std::vector<std::pair<std::string, std::string>> query = {};
+        int i = 0;
+        (..., addArgToQuery(nameBase,definitionBase,args,sizeof...(Args),query,i++));
 
         return query;
     }
@@ -77,7 +95,8 @@ namespace DB {
             {"readUser", "SELECT * FROM users WHERE name = $1"},
             {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
         },
-        prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
+        // prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
+        prepareDynamicSQLStatementsComplex("readAllUsers","SELECT user_id, name FROM users ",paginatSQL,std::vector{searchSQL}),
     };
 
 
