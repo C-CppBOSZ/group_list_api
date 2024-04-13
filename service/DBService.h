@@ -154,7 +154,9 @@ namespace DB {
                 //     password,
                 //     salt
                 // );
+
                 txn.exec_prepared("createUser", name, password, salt);
+
                 // std::vector<std::string> par = {name,password,salt};
                 // txn.exec_prepared("createUser",pqxx::prepare::make_dynamic_params(par.begin(), par.end()));
                 // pqxx::params params;
