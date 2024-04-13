@@ -9,6 +9,48 @@
 
 namespace DB {
 
+    static std::vector<std::pair<std::string, std::string> > prepareDynamicSQLStatements(
+            const std::string &nameBase, const std::string &definitionBase,
+            const std::vector<std::pair<std::string, std::string> > &dynamicSQL) {
+        std::vector<std::pair<std::string, std::string> > query = {};
+        const int size = static_cast<int>(std::pow(2, dynamicSQL.size()));
+        query.reserve(size);
+        for (int i = 0; i < size; ++i) {
+            std::pair<std::string, std::string> sql = {nameBase, definitionBase};
+            for (int j = 0; j < dynamicSQL.size(); ++j) {
+                if ((i & static_cast<int>(std::pow(2, j))) != 0) {
+                    sql.first.append(dynamicSQL[j].first);
+                    sql.second.append(dynamicSQL[j].second);
+                }
+            }
+
+            int count = 0;
+            size_t pos = 0;
+
+            while ((pos = sql.second.find("#", pos)) != std::string::npos) {
+                count++;
+                sql.second.replace(pos,1,std::to_string(count));
+            }
+
+            query.emplace_back(sql);
+        }
+
+        return query;
+    }
+
+    const std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# "};
+    // std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "}; // TODO drugi argument daje error trzeba sprawdzić  czy można wywołać DEC bez drugiego argumentu albo jak dać drugi argument
+    const std::pair<std::string, std::string> paginatSQL = {"Paginated", "LIMIT $# OFFSET $# "};
+    const std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
+    const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
+        {
+            {"readUser", "SELECT * FROM users WHERE name = $1"},
+            {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
+        },
+        prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
+    };
+
+
     template<typename R>
     struct resDB{
         resDB(bool ok, std::string msg, R *get) : ok(ok), msg(std::move(msg)), get(get) {}
