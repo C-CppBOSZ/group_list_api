@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(group_list_api main.cpp
         Routes.h
         service/DBService.h
-        service/base/DBBase.h)
+        service/base/DBBase.h
+        fun.h)
 
 
 find_package(Crow)
