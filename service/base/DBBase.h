@@ -47,14 +47,25 @@ namespace DB {
 
         std::pair<std::string, std::string> sql = {nameBase, definitionBase};
 
-
-        for (int j = 0; j < size; ++j) {
-            if constexpr(std::is_same_v<Arg, std::pair<std::string, std::string>>) {
+        if constexpr(std::is_same_v<Arg, std::pair<std::string, std::string>>) {
+            for (int j = 0; j < size; ++j) {
                 if ((i & static_cast<int>(std::pow(2, j))) != 0) {
                     sql.first.append(arg.first);
                     sql.second.append(arg.second);
                 }
-            } else if constexpr(std::is_same_v<Arg, std::vector<std::pair<std::string, std::string>>>) {
+            }
+
+            int count = 0;
+            size_t pos = 0;
+
+            while ((pos = sql.second.find("#", pos)) != std::string::npos) {
+                count++;
+                sql.second.replace(pos,1,std::to_string(count));
+            }
+
+            query.emplace_back(sql);
+        } else if constexpr(std::is_same_v<Arg, std::vector<std::pair<std::string, std::string>>>) {
+            for (int j = 0; j < size; ++j) {
                 if ((i & static_cast<int>(std::pow(2, j))) != 0) {
                     for (const auto &pair : arg) {
                         query.push_back(pair);
@@ -63,15 +74,7 @@ namespace DB {
             }
         }
 
-        int count = 0;
-        size_t pos = 0;
 
-        while ((pos = sql.second.find("#", pos)) != std::string::npos) {
-            count++;
-            sql.second.replace(pos,1,std::to_string(count));
-        }
-
-        query.emplace_back(sql);
 
     }
 
