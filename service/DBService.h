@@ -113,12 +113,13 @@ namespace DB {
 
             std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "};
             std::pair<std::string, std::string> paginatSQL = {"Paginated", "LIMIT $# OFFSET $# "};
+            std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
             const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
                 {
                     {"readUser", "SELECT * FROM users WHERE name = $1"},
                     {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
                 },
-                prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {sortSQL, paginatSQL}),
+                prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
             };
 
             prepareSQLStatements(
