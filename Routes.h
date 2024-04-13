@@ -153,7 +153,6 @@ namespace routes {
 
         CROW_ROUTE(app, "/user/all").methods("GET"_method).CROW_MIDDLEWARES(app, AuthorizationMW)
                 ([&](const crow::request &req) {
-
                     auto ctx = app.get_context<AuthorizationMW>(req);
                     std::tuple<bool, crow::response> tuple = checkPermissions(userRoles, ctx,
                                                                               DB::RolePermission::UserR);

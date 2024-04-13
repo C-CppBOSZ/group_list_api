@@ -26,35 +26,6 @@ namespace DB {
             }
         }
 
-        static std::vector<std::pair<std::string, std::string> > prepareDynamicSQLStatements(
-            const std::string &nameBase, const std::string &definitionBase,
-            const std::vector<std::pair<std::string, std::string> > &dynamicSQL) {
-            std::vector<std::pair<std::string, std::string> > query = {};
-            const int size = static_cast<int>(std::pow(2, dynamicSQL.size()));
-            query.reserve(size);
-            for (int i = 0; i < size; ++i) {
-                std::pair<std::string, std::string> sql = {nameBase, definitionBase};
-                for (int j = 0; j < dynamicSQL.size(); ++j) {
-                    if ((i & static_cast<int>(std::pow(2, j))) != 0) {
-                        sql.first.append(dynamicSQL[j].first);
-                        sql.second.append(dynamicSQL[j].second);
-                    }
-                }
-
-                int count = 0;
-                size_t pos = 0;
-
-                while ((pos = sql.second.find("#", pos)) != std::string::npos) {
-                    count++;
-                    sql.second.replace(pos,1,std::to_string(count));
-                }
-
-                query.emplace_back(sql);
-            }
-
-            return query;
-        }
-
         void createSchema() {
             try {
                 pqxx::work txn(conn);
@@ -110,19 +81,6 @@ namespace DB {
             : conn(connection_string) {
             createSchema();
 
-
-            std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# "};
-            // std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "}; // TODO drugi argument daje error trzeba sprawdzić  czy można wywołać DEC bez drugiego argumentu albo jak dać drugi argument
-            std::pair<std::string, std::string> paginatSQL = {"Paginated", "LIMIT $# OFFSET $# "};
-            std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
-            const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
-                {
-                    {"readUser", "SELECT * FROM users WHERE name = $1"},
-                    {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
-                },
-                prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
-            };
-
             prepareSQLStatements(
                 fun::flat(defSQL)
             );
@@ -154,7 +112,9 @@ namespace DB {
                 //     password,
                 //     salt
                 // );
+
                 txn.exec_prepared("createUser", name, password, salt);
+
                 // std::vector<std::string> par = {name,password,salt};
                 // txn.exec_prepared("createUser",pqxx::prepare::make_dynamic_params(par.begin(), par.end()));
                 // pqxx::params params;
@@ -204,35 +164,39 @@ namespace DB {
 
             try {
                 pqxx::work txn(conn);
-                std::string sortClause;
+                pqxx::params params;
+                std::string statement = "readAllUsers";
+
                 if (sortBy != UserSortBy::None) {
-                    std::string sortByField;
+                    statement += sortSQL.first;
                     switch (sortBy) {
                         case UserSortBy::ID:
-                            sortByField = "user_id";
+                            params.append("user_id");
                             break;
                         case UserSortBy::Name:
-                            sortByField = "name";
+                            params.append("name");
                             break;
                     }
-                    sortClause = "ORDER BY " + sortByField;
                 }
 
-                if (order == SortOrder::Descending) {
-                    sortClause += " DESC";
-                }
+                // if (order == SortOrder::Descending) {
+                //     sortClause += " DESC";
+                // }
 
-                std::string limitClause;
                 if (pageSize > 0) {
+                    statement += paginatSQL.first;
                     if (pageNumber < 1) {
                         pageNumber = 1;
                     }
-                    int offset = (pageNumber - 1) * pageSize;
-                    limitClause = "LIMIT " + std::to_string(pageSize) + " OFFSET " + std::to_string(offset);
+                    const int offset = (pageNumber - 1) * pageSize;
+                    // limitClause = "LIMIT " + std::to_string(pageSize) + " OFFSET " + std::to_string(offset);
+                    params.append(pageSize);
+                    params.append(offset);
                 }
-
-                std::string query = "SELECT user_id, name FROM users " + sortClause + " " + limitClause;
-                pqxx::result result = txn.exec(query);
+                //
+                // std::string query = "SELECT user_id, name FROM users " + sortClause + " " + limitClause;
+                // pqxx::result result = txn.exec(query);
+                pqxx::result result = txn.exec_prepared(statement,params);
                 txn.commit();
 
                 for (const auto &row: result) {
