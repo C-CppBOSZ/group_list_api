@@ -136,7 +136,7 @@ namespace DB {
         resDB<std::tuple<int, std::string, std::string, std::string> > readUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-
+                // "\\\\\\//! @CREATE TABLE user_owo2();@"
                 pqxx::result result = txn.exec_prepared("readUser", name);
                 txn.commit();
                 if (!result.empty()) {
@@ -161,7 +161,6 @@ namespace DB {
                                                                         int pageSize = -1,
                                                                         int pageNumber = 1) override {
             auto *users = new std::vector<std::tuple<int, std::string> >();
-            auto *users1 = new std::vector<std::tuple<int, std::string> >();
 
             try {
                 pqxx::work txn(conn);

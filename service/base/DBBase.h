@@ -45,25 +45,22 @@ namespace DB {
     static void addArgToQuery(const std::string &nameBase, const std::string &definitionBase, Arg arg,
                               const size_t &size, std::vector<std::pair<std::string, std::string> > &sqls,
                               std::vector<std::pair<std::string, std::string> > &query, const int &i, const int &j) {
-
-        if constexpr (std::is_same_v<Arg, std::pair<std::string, std::string> >) {
-            if ((i & static_cast<int>(std::pow(2, j))) != 0) {
-                for (auto sql: sqls) {
+        if ((i & static_cast<int>(std::pow(2, j))) != 0) {
+            if constexpr (std::is_same_v<Arg, std::pair<std::string, std::string> >) {
+                for (auto &sql: sqls) {
                     sql.first.append(arg.first);
                     sql.second.append(arg.second);
                 }
-            }
-        } else if constexpr (std::is_same_v<Arg, std::vector<std::pair<std::string, std::string> > >) {
-            if ((i & static_cast<int>(std::pow(2, j))) != 0) {
+            } else if constexpr (std::is_same_v<Arg, std::vector<std::pair<std::string, std::string> > >) {
                 int sizeSql = sqls.size();
-                const auto ptr = sqls.end();
-                for (int k = 0; k < (arg.size() - 1); ++k) {
-                    sqls.insert(sqls.end(), sqls.begin(), ptr);
+                std::vector<std::pair<std::string, std::string> > tmp(sqls);
+                for (int k = 0; k < (arg.size() -1); ++k) {
+                    sqls.insert(sqls.end(), tmp.begin(),tmp.end());
                 }
                 for (int k = 0; k < sizeSql; ++k) {
                     for (int l = 0; l < arg.size(); ++l) {
-                        sqls[k * l].first.append(arg[l].first);
-                        sqls[k * l].second.append(arg[l].second);
+                        sqls[k * arg.size() + l].first.append(arg[l].first);
+                        sqls[k * arg.size() + l].second.append(arg[l].second);
                     }
                 }
             }
@@ -114,7 +111,7 @@ namespace DB {
         },
         // prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
         prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
-                                           std::vector{searchSQL,sortSQL}),
+                                           std::vector{searchSQL, sortSQL}),
     };
 
 
