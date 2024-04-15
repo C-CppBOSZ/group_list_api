@@ -99,11 +99,29 @@ namespace DB {
         return query;
     }
 
+    std::vector<std::pair<std::string, std::string>> sortBy(const std::vector<std::string> column_name) {
+        std::vector<std::pair<std::string, std::string>> result;
 
-    const std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# "};
-    // std::pair<std::string, std::string> sortSQL = {"Sorted", "ORDER BY $# $# "}; // TODO drugi argument daje error trzeba sprawdzić  czy można wywołać DEC bez drugiego argumentu albo jak dać drugi argument
+        for (const auto& col : column_name) {
+            result.emplace_back("SortedBy" + col, "ORDER BY " + col + " ");
+        }
+
+        return result;
+    }
+    std::vector<std::pair<std::string, std::string>> searchBy(const std::vector<std::string> column_name) {
+        std::vector<std::pair<std::string, std::string>> result;
+
+        for (const auto& col : column_name) {
+            result.emplace_back("SearchedBy" + col, "WHERE " + col + " ILIKE $# ");
+        }
+
+        return result;
+    }
+
+
+
     const std::pair<std::string, std::string> paginatSQL = {"Paginated", "LIMIT $# OFFSET $# "};
-    const std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
+    // const std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
     const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
         {
             {"readUser", "SELECT * FROM users WHERE name = quote_literal($1);"},
@@ -112,6 +130,7 @@ namespace DB {
         // prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
         // prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
         //                                    std::vector{searchSQL, sortSQL}),
+        prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ",searchBy({"name"}),sortBy({"name","user_id"}), paginatSQL),
     };
 
 

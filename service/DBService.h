@@ -168,7 +168,7 @@ namespace DB {
                 std::string statement = "readAllUsers";
 
                 if (sortBy != UserSortBy::None) {
-                    statement += sortSQL.first;
+                    // statement += sortSQL.first;
                     switch (sortBy) {
                         case UserSortBy::ID:
                             params.append("user_id");
