@@ -106,12 +106,12 @@ namespace DB {
     const std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
     const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
         {
-            {"readUser", "SELECT * FROM users WHERE name = $1"},
-            {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
+            {"readUser", "SELECT * FROM users WHERE name = quote_literal($1);"},
+            {"createUser", "INSERT INTO users (name, password, salt) VALUES (quote_literal($1), $2, $3)"},
         },
         // prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
-        prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
-                                           std::vector{searchSQL, sortSQL}),
+        // prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
+        //                                    std::vector{searchSQL, sortSQL}),
     };
 
 

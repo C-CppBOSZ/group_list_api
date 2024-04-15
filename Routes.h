@@ -111,7 +111,7 @@ namespace routes {
                     auto x = crow::json::load(req.body);
                     if (!x && !x.has("name") && !x.has("password"))
                         return crow::response(400);
-                    std::string salt = generateSalt(50);
+                    std::string salt = generateSalt(40);
                     const std::string &password = generateHashedPassword(x["password"].s(), salt);
                     const DB::resDB<void> &resDb = user.createUser(x["name"].s(), password, salt);
                     if (!resDb.ok)
