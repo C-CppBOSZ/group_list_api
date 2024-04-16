@@ -42,9 +42,7 @@ namespace DB {
                                std::is_same_v<T, std::vector<std::pair<std::string, std::string> > >;
 
     template<PairOrVectorPair Arg>
-    static void addArgToQuery(const std::string &nameBase, const std::string &definitionBase, Arg arg,
-                              const size_t &size, std::vector<std::pair<std::string, std::string> > &sqls,
-                              std::vector<std::pair<std::string, std::string> > &query, const int &i, const int &j) {
+    static void addArgToQuery(Arg arg, std::vector<std::pair<std::string, std::string> > &sqls, const int &i, const int &j) {
         if ((i & static_cast<int>(std::pow(2, j))) != 0) {
             if constexpr (std::is_same_v<Arg, std::pair<std::string, std::string> >) {
                 for (auto &sql: sqls) {
@@ -70,10 +68,6 @@ namespace DB {
     template<PairOrVectorPair... Args>
     static std::vector<std::pair<std::string, std::string> > prepareDynamicSQLStatementsComplex(
         const std::string &nameBase, const std::string &definitionBase, Args... args) {
-        size_t pairsCount = 0;
-        size_t vectorPairsCount = 0;
-
-        ((std::is_same_v<Args, std::pair<std::string, std::string> > ? pairsCount++ : vectorPairsCount++), ...);
 
         std::vector<std::pair<std::string, std::string> > query = {};
         size_t pack_size = sizeof...(Args);
@@ -81,7 +75,7 @@ namespace DB {
             int j = 0;
             std::vector<std::pair<std::string, std::string> > sqls = {{nameBase, definitionBase}};
 
-            (..., addArgToQuery(nameBase, definitionBase, args, pack_size, sqls, query, i, j++));
+            (..., addArgToQuery(args, sqls, i, j++));
 
             for (auto sql: sqls) {
                 int count = 0;
@@ -124,13 +118,21 @@ namespace DB {
     // const std::pair<std::string, std::string> searchSQL = {"Searched", "WHERE $# ILIKE $# "};
     const std::vector<std::vector<std::pair<std::string, std::string> > > defSQL = {
         {
-            {"readUser", "SELECT * FROM users WHERE name = quote_literal($1);"},
-            {"createUser", "INSERT INTO users (name, password, salt) VALUES (quote_literal($1), $2, $3)"},
+            {"readUser", "SELECT * FROM users WHERE name = $1"},
+            {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
+            {"updateUserPassword", "UPDATE users SET password = $1 WHERE name = $2"},
+            {"deleteUser", "DELETE FROM users WHERE name = $1"},
+            {"countUsers", "SELECT COUNT(*) FROM users"},
+            {"createRole", "INSERT INTO roles (role_name, permission, is_base) VALUES ($1, $2, $3)"},
+            {"readRole", "SELECT role_id, role_name, permission, is_base FROM roles WHERE role_name = $1"},
+
         },
         // prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
         // prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
         //                                    std::vector{searchSQL, sortSQL}),
         prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ",searchBy({"name"}),sortBy({"name","user_id"}), paginatSQL),
+        prepareDynamicSQLStatementsComplex("readAllRoles", "SELECT role_id, role_name, permission, is_base FROM roles ",searchBy({"role_name"}),sortBy({"role_name","role_id"}), paginatSQL),
+
     };
 
 

@@ -34,11 +34,11 @@ int main() {
     }
 
     routes::authorizationRoutes(db);
-    // routes::usersRoutes(db,db);
-    // routes::selfRoutes(db,db);
-    // routes::rolesRoutes(db,db);
-    // routes::rolesUsersRoutes(db,db,db);
-    // routes::groupsRoutes(db,db,db);
+    routes::usersRoutes(db,db);
+    routes::selfRoutes(db,db);
+    routes::rolesRoutes(db,db);
+    routes::rolesUsersRoutes(db,db,db);
+    routes::groupsRoutes(db,db,db);
 
     routes::app.port(2050).multithreaded().run();
 

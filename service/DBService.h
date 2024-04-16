@@ -168,13 +168,12 @@ namespace DB {
                 std::string statement = "readAllUsers";
 
                 if (sortBy != UserSortBy::None) {
-                    // statement += sortSQL.first;
                     switch (sortBy) {
                         case UserSortBy::ID:
-                            params.append("user_id");
+                                statement += "SortedByuser_id";
                             break;
                         case UserSortBy::Name:
-                            params.append("name");
+                                statement += "SortedByname";
                             break;
                     }
                 }
@@ -216,11 +215,12 @@ namespace DB {
         resDB<void> updateUserPassword(const std::string &name, const std::string &newPassword) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "UPDATE users SET password = $1 WHERE name = $2",
-                    newPassword,
-                    name
-                );
+                // txn.exec_params(
+                //     "UPDATE users SET password = $1 WHERE name = $2",
+                //     newPassword,
+                //     name
+                // );
+                txn.exec_prepared("updateUserPassword",newPassword,name);
                 txn.commit();
                 std::cout << "User password updated successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -234,10 +234,11 @@ namespace DB {
         resDB<void> deleteUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "DELETE FROM users WHERE name = $1",
-                    name
-                );
+                // txn.exec_params(
+                //     "DELETE FROM users WHERE name = $1",
+                //     name
+                // );
+                txn.exec_prepared("deleteUser",name);
                 txn.commit();
                 std::cout << "User deleted successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -252,7 +253,8 @@ namespace DB {
         resDB<int> countUsers() override {
             try {
                 pqxx::work txn(conn);
-                pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
+                // pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
+                pqxx::result result = txn.exec_prepared("countUsers");
                 txn.commit();
 
                 if (!result.empty()) {
@@ -291,12 +293,13 @@ namespace DB {
         resDB<void> createRole(const std::string &name, long permission, bool isBase = false) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "INSERT INTO roles (role_name, permission, is_base) VALUES ($1, $2, $3)",
-                    name,
-                    permission,
-                    isBase
-                );
+                // txn.exec_params(
+                //     "INSERT INTO roles (role_name, permission, is_base) VALUES ($1, $2, $3)",
+                //     name,
+                //     permission,
+                //     isBase
+                // );
+                txn.exec_prepared("createRole",name,permission,isBase);
                 txn.commit();
                 std::cout << "Role created successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -311,10 +314,11 @@ namespace DB {
         resDB<std::tuple<int, std::string, long, bool> > readRole(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-                pqxx::result result = txn.exec_params(
-                    "SELECT role_id, role_name, permission, is_base FROM roles WHERE role_name = $1",
-                    name
-                );
+                // pqxx::result result = txn.exec_params(
+                //     "SELECT role_id, role_name, permission, is_base FROM roles WHERE role_name = $1",
+                //     name
+                // );
+                pqxx::result result = txn.exec_prepared("readRole",name);
                 txn.commit();
                 if (!result.empty()) {
                     auto row = result[0];
