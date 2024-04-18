@@ -106,23 +106,7 @@ namespace DB {
         resDB<void> createUser(const std::string &name, const std::string &password, const std::string &salt) override {
             try {
                 pqxx::work txn(conn);
-                // txn.exec_params(
-                //     "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)",
-                //     name,
-                //     password,
-                //     salt
-                // );
-
                 txn.exec_prepared("createUser", name, password, salt);
-
-                // std::vector<std::string> par = {name,password,salt};
-                // txn.exec_prepared("createUser",pqxx::prepare::make_dynamic_params(par.begin(), par.end()));
-                // pqxx::params params;
-                // params.append(name);
-                // params.append(password);
-                // params.append(salt);
-                // txn.exec_prepared("createUser",params); // todo to przykładowe wywołania z dynamicznym argumentem przydadzą sie pużniejj przy sortowaniu
-
                 txn.commit();
                 std::cout << "User created successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -136,7 +120,6 @@ namespace DB {
         resDB<std::tuple<int, std::string, std::string, std::string> > readUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-                // "\\\\\\//! @CREATE TABLE user_owo2();@"
                 pqxx::result result = txn.exec_prepared("readUser", name);
                 txn.commit();
                 if (!result.empty()) {
@@ -156,7 +139,8 @@ namespace DB {
             }
         }
 
-        resDB<std::vector<std::tuple<int, std::string> > > readAllUsers(UserSortBy sortBy = UserSortBy::None,
+        resDB<std::vector<std::tuple<int, std::string> > > readAllUsers(std::string SearchByName = "",
+                                                                        UserSortBy sortBy = UserSortBy::None,
                                                                         SortOrder order = SortOrder::Ascending,
                                                                         int pageSize = -1,
                                                                         int pageNumber = 1) override {
@@ -166,6 +150,11 @@ namespace DB {
                 pqxx::work txn(conn);
                 pqxx::params params;
                 std::string statement = "readAllUsers";
+
+                if (!SearchByName.empty()) {
+                    statement += "SearchedBy" "name";
+                    params.append(SearchByName);
+                }
 
                 if (sortBy != UserSortBy::None) {
                     switch (sortBy) {

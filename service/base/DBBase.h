@@ -219,7 +219,7 @@ namespace DB {
 
         virtual resDB<std::tuple<int, std::string, std::string, std::string> > readUser(const std::string &name) = 0;
 
-        virtual resDB<std::vector<std::tuple<int, std::string> > > readAllUsers(
+        virtual resDB<std::vector<std::tuple<int, std::string> > > readAllUsers(std::string SearchByName = "",
             UserSortBy sortBy = UserSortBy::None, SortOrder order = SortOrder::Ascending, int pageSize = -1,
             int pageNumber = 1) = 0;
 
