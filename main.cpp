@@ -40,10 +40,6 @@ int main() {
     routes::rolesUsersRoutes(db,db,db);
     routes::groupsRoutes(db,db,db);
 
-
-
-
-
     routes::app.port(2050).multithreaded().run();
 
     return 0;

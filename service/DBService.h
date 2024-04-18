@@ -106,23 +106,7 @@ namespace DB {
         resDB<void> createUser(const std::string &name, const std::string &password, const std::string &salt) override {
             try {
                 pqxx::work txn(conn);
-                // txn.exec_params(
-                //     "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)",
-                //     name,
-                //     password,
-                //     salt
-                // );
-
                 txn.exec_prepared("createUser", name, password, salt);
-
-                // std::vector<std::string> par = {name,password,salt};
-                // txn.exec_prepared("createUser",pqxx::prepare::make_dynamic_params(par.begin(), par.end()));
-                // pqxx::params params;
-                // params.append(name);
-                // params.append(password);
-                // params.append(salt);
-                // txn.exec_prepared("createUser",params); // todo to przykładowe wywołania z dynamicznym argumentem przydadzą sie pużniejj przy sortowaniu
-
                 txn.commit();
                 std::cout << "User created successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -136,7 +120,6 @@ namespace DB {
         resDB<std::tuple<int, std::string, std::string, std::string> > readUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-
                 pqxx::result result = txn.exec_prepared("readUser", name);
                 txn.commit();
                 if (!result.empty()) {
@@ -156,7 +139,8 @@ namespace DB {
             }
         }
 
-        resDB<std::vector<std::tuple<int, std::string> > > readAllUsers(UserSortBy sortBy = UserSortBy::None,
+        resDB<std::vector<std::tuple<int, std::string> > > readAllUsers(std::string SearchByName = "",
+                                                                        UserSortBy sortBy = UserSortBy::None,
                                                                         SortOrder order = SortOrder::Ascending,
                                                                         int pageSize = -1,
                                                                         int pageNumber = 1) override {
@@ -167,14 +151,18 @@ namespace DB {
                 pqxx::params params;
                 std::string statement = "readAllUsers";
 
+                if (!SearchByName.empty()) {
+                    statement += "SearchedBy" "name";
+                    params.append("%"+SearchByName+"%");
+                }
+
                 if (sortBy != UserSortBy::None) {
-                    statement += sortSQL.first;
                     switch (sortBy) {
                         case UserSortBy::ID:
-                            params.append("user_id");
+                                statement += "SortedBy" "user_id";
                             break;
                         case UserSortBy::Name:
-                            params.append("name");
+                                statement += "SortedBy" "name";
                             break;
                     }
                 }
@@ -197,7 +185,6 @@ namespace DB {
                 // std::string query = "SELECT user_id, name FROM users " + sortClause + " " + limitClause;
                 // pqxx::result result = txn.exec(query);
                 pqxx::result result = txn.exec_prepared(statement,params);
-                txn.commit();
 
                 for (const auto &row: result) {
                     users->emplace_back(row["user_id"].as<int>(), row["name"].as<std::string>());
@@ -217,11 +204,12 @@ namespace DB {
         resDB<void> updateUserPassword(const std::string &name, const std::string &newPassword) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "UPDATE users SET password = $1 WHERE name = $2",
-                    newPassword,
-                    name
-                );
+                // txn.exec_params(
+                //     "UPDATE users SET password = $1 WHERE name = $2",
+                //     newPassword,
+                //     name
+                // );
+                txn.exec_prepared("updateUserPassword",newPassword,name);
                 txn.commit();
                 std::cout << "User password updated successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -235,10 +223,11 @@ namespace DB {
         resDB<void> deleteUser(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "DELETE FROM users WHERE name = $1",
-                    name
-                );
+                // txn.exec_params(
+                //     "DELETE FROM users WHERE name = $1",
+                //     name
+                // );
+                txn.exec_prepared("deleteUser",name);
                 txn.commit();
                 std::cout << "User deleted successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -250,10 +239,18 @@ namespace DB {
 
 
         // Count users
-        resDB<int> countUsers() override {
+        resDB<int> countUsers(std::string SearchByName = "") override {
             try {
                 pqxx::work txn(conn);
-                pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
+                pqxx::params params;
+                std::string statement = "countUsers";
+
+                if (!SearchByName.empty()) {
+                    statement += "SearchedBy" "name";
+                    params.append("%"+SearchByName+"%");
+                }
+                // pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
+                pqxx::result result = txn.exec_prepared(statement,params);
                 txn.commit();
 
                 if (!result.empty()) {
@@ -292,12 +289,13 @@ namespace DB {
         resDB<void> createRole(const std::string &name, long permission, bool isBase = false) override {
             try {
                 pqxx::work txn(conn);
-                txn.exec_params(
-                    "INSERT INTO roles (role_name, permission, is_base) VALUES ($1, $2, $3)",
-                    name,
-                    permission,
-                    isBase
-                );
+                // txn.exec_params(
+                //     "INSERT INTO roles (role_name, permission, is_base) VALUES ($1, $2, $3)",
+                //     name,
+                //     permission,
+                //     isBase
+                // );
+                txn.exec_prepared("createRole",name,permission,isBase);
                 txn.commit();
                 std::cout << "Role created successfully." << std::endl;
                 return make_res<void>(nullptr);
@@ -312,10 +310,11 @@ namespace DB {
         resDB<std::tuple<int, std::string, long, bool> > readRole(const std::string &name) override {
             try {
                 pqxx::work txn(conn);
-                pqxx::result result = txn.exec_params(
-                    "SELECT role_id, role_name, permission, is_base FROM roles WHERE role_name = $1",
-                    name
-                );
+                // pqxx::result result = txn.exec_params(
+                //     "SELECT role_id, role_name, permission, is_base FROM roles WHERE role_name = $1",
+                //     name
+                // );
+                pqxx::result result = txn.exec_prepared("readRole",name);
                 txn.commit();
                 if (!result.empty()) {
                     auto row = result[0];
@@ -342,42 +341,44 @@ namespace DB {
             int pageNumber = 1, bool isBase = false) override {
             auto roles = new std::vector<std::tuple<int, std::string, long, bool> >();
 
+            std::string statement = "readAllRoles";
+
             try {
                 pqxx::work txn(conn);
-                std::string sortClause;
+                pqxx::params params;
+
                 if (sortBy != RoleSortBy::None) {
-                    std::string sortByField;
                     switch (sortBy) {
                         case RoleSortBy::ID:
-                            sortByField = "role_id";
+                            statement += "SortedBy" "role_id";
                             break;
                         case RoleSortBy::Name:
-                            sortByField = "role_name";
+                            statement += "SortedBy" "role_name";
                             break;
                     }
-                    sortClause = "ORDER BY " + sortByField;
-                    if (order == SortOrder::Descending) {
-                        sortClause += " DESC";
-                    }
+                    // if (order == SortOrder::Descending) {
+                    //     sortClause += " DESC";
+                    // }
                 }
 
                 std::string baseClause;
                 if (isBase) {
-                    baseClause = "WHERE is_base = true";
+                    // baseClause = "WHERE is_base = true";
+                    statement += "IsBase";
                 }
 
-                std::string limitClause;
                 if (pageSize > 0) {
+                    statement += paginatSQL.first;
                     if (pageNumber < 1) {
                         pageNumber = 1;
                     }
                     int offset = (pageNumber - 1) * pageSize;
-                    limitClause = "LIMIT " + std::to_string(pageSize) + " OFFSET " + std::to_string(offset);
+
+                    params.append(pageSize);
+                    params.append(offset);
                 }
 
-                std::string query = "SELECT role_id, role_name, permission, is_base FROM roles " + baseClause + " " +
-                                    sortClause + " " + limitClause;
-                pqxx::result result = txn.exec(query);
+                pqxx::result result = txn.exec_prepared(statement,params);
                 txn.commit();
 
                 for (const auto &row: result) {
