@@ -155,7 +155,14 @@ namespace routes {
             if (!std::get<0>(tuple))
                 return std::move(std::get<1>(tuple));
 
-            std::string SearchByName = req.url_params.get("SearchByName");
+            std::string SearchByName;
+            try {
+                std::string Search = req.url_params.get("SearchByName");
+                if (!Search.empty())
+                    SearchByName = Search;
+            }catch (const std::exception &e) {
+                    SearchByName = "";
+            }
 
             DB::UserSortBy sort = DB::UserSortBy::None;
             try {
@@ -200,6 +207,9 @@ namespace routes {
 
             const auto &resDb = user.readAllUsers(SearchByName,sort, sortOrder, pageSize, pageNumber);
             if (!resDb.ok) {
+                if (resDb.msg == "empty.")
+                    return crow::response(404, resDb.msg);
+
                 return crow::response(400, resDb.msg);
             }
 
@@ -208,7 +218,7 @@ namespace routes {
                 vector_of_wvalue.push_back({{"id", std::get<0>(item)}, {"name", std::get<1>(item)}});
             }
 
-            auto count_users = user.countUsers();
+            auto count_users = user.countUsers(SearchByName);
             if (!count_users.ok) {
                return crow::response(400, resDb.msg);
            }

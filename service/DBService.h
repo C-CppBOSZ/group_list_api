@@ -153,7 +153,7 @@ namespace DB {
 
                 if (!SearchByName.empty()) {
                     statement += "SearchedBy" "name";
-                    params.append(SearchByName);
+                    params.append("%"+SearchByName+"%");
                 }
 
                 if (sortBy != UserSortBy::None) {
@@ -239,11 +239,18 @@ namespace DB {
 
 
         // Count users
-        resDB<int> countUsers() override {
+        resDB<int> countUsers(std::string SearchByName = "") override {
             try {
                 pqxx::work txn(conn);
+                pqxx::params params;
+                std::string statement = "countUsers";
+
+                if (!SearchByName.empty()) {
+                    statement += "SearchedBy" "name";
+                    params.append("%"+SearchByName+"%");
+                }
                 // pqxx::result result = txn.exec("SELECT COUNT(*) FROM users");
-                pqxx::result result = txn.exec_prepared("countUsers");
+                pqxx::result result = txn.exec_prepared(statement,params);
                 txn.commit();
 
                 if (!result.empty()) {

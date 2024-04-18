@@ -122,7 +122,7 @@ namespace DB {
             {"createUser", "INSERT INTO users (name, password, salt) VALUES ($1, $2, $3)"},
             {"updateUserPassword", "UPDATE users SET password = $1 WHERE name = $2"},
             {"deleteUser", "DELETE FROM users WHERE name = $1"},
-            {"countUsers", "SELECT COUNT(*) FROM users"},
+            // {"countUsers", "SELECT COUNT(*) FROM users"},
             {"createRole", "INSERT INTO roles (role_name, permission, is_base) VALUES ($1, $2, $3)"},
             {"readRole", "SELECT role_id, role_name, permission, is_base FROM roles WHERE role_name = $1"},
 
@@ -130,6 +130,7 @@ namespace DB {
         // prepareDynamicSQLStatements("readAllUsers", "SELECT user_id, name FROM users ", {searchSQL,sortSQL, paginatSQL}),
         // prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
         //                                    std::vector{searchSQL, sortSQL}),
+        prepareDynamicSQLStatements("countUsers","SELECT COUNT(*) FROM users ",{searchBy({"name"})}),
         prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ",searchBy({"name"}),sortBy({"name","user_id"}), paginatSQL),
         prepareDynamicSQLStatementsComplex("readAllRoles", "SELECT role_id, role_name, permission, is_base FROM roles ",
             // searchBy({"role_name"}),
@@ -227,7 +228,7 @@ namespace DB {
 
         virtual resDB<void> deleteUser(const std::string &name) = 0;
 
-        virtual resDB<int> countUsers() = 0;
+        virtual resDB<int> countUsers(std::string SearchByName = "") = 0;
 
         //        virtual resDB<bool> verifyPassword(const std::string& name, const std::string& password) = 0;
 
