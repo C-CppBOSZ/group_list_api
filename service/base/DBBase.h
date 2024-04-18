@@ -131,7 +131,15 @@ namespace DB {
         // prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ", paginatSQL,
         //                                    std::vector{searchSQL, sortSQL}),
         prepareDynamicSQLStatementsComplex("readAllUsers", "SELECT user_id, name FROM users ",searchBy({"name"}),sortBy({"name","user_id"}), paginatSQL),
-        prepareDynamicSQLStatementsComplex("readAllRoles", "SELECT role_id, role_name, permission, is_base FROM roles ",searchBy({"role_name"}),sortBy({"role_name","role_id"}), paginatSQL),
+        prepareDynamicSQLStatementsComplex("readAllRoles", "SELECT role_id, role_name, permission, is_base FROM roles ",
+            // searchBy({"role_name"}),
+            std::vector<std::pair<std::string,std::string>>{
+                {"SearchedBy" "role_name", "WHERE " "role_name" " ILIKE $# "},
+                {"SearchedBy" "role_name" "IsBase" , "WHERE " "role_name" " ILIKE $# " "AND" " is_base = true "},
+                {"IsBase", "WHERE is_base = true "}
+            },
+            sortBy({"role_name","role_id"}),
+            paginatSQL),
 
     };
 

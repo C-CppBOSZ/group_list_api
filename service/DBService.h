@@ -170,10 +170,10 @@ namespace DB {
                 if (sortBy != UserSortBy::None) {
                     switch (sortBy) {
                         case UserSortBy::ID:
-                                statement += "SortedByuser_id";
+                                statement += "SortedBy" "user_id";
                             break;
                         case UserSortBy::Name:
-                                statement += "SortedByname";
+                                statement += "SortedBy" "name";
                             break;
                     }
                 }
@@ -345,42 +345,44 @@ namespace DB {
             int pageNumber = 1, bool isBase = false) override {
             auto roles = new std::vector<std::tuple<int, std::string, long, bool> >();
 
+            std::string statement = "readAllRoles";
+
             try {
                 pqxx::work txn(conn);
-                std::string sortClause;
+                pqxx::params params;
+
                 if (sortBy != RoleSortBy::None) {
-                    std::string sortByField;
                     switch (sortBy) {
                         case RoleSortBy::ID:
-                            sortByField = "role_id";
+                            statement += "SortedBy" "role_id";
                             break;
                         case RoleSortBy::Name:
-                            sortByField = "role_name";
+                            statement += "SortedBy" "role_name";
                             break;
                     }
-                    sortClause = "ORDER BY " + sortByField;
-                    if (order == SortOrder::Descending) {
-                        sortClause += " DESC";
-                    }
+                    // if (order == SortOrder::Descending) {
+                    //     sortClause += " DESC";
+                    // }
                 }
 
                 std::string baseClause;
                 if (isBase) {
-                    baseClause = "WHERE is_base = true";
+                    // baseClause = "WHERE is_base = true";
+                    statement += "IsBase";
                 }
 
-                std::string limitClause;
                 if (pageSize > 0) {
+                    statement += paginatSQL.first;
                     if (pageNumber < 1) {
                         pageNumber = 1;
                     }
                     int offset = (pageNumber - 1) * pageSize;
-                    limitClause = "LIMIT " + std::to_string(pageSize) + " OFFSET " + std::to_string(offset);
+
+                    params.append(pageSize);
+                    params.append(offset);
                 }
 
-                std::string query = "SELECT role_id, role_name, permission, is_base FROM roles " + baseClause + " " +
-                                    sortClause + " " + limitClause;
-                pqxx::result result = txn.exec(query);
+                pqxx::result result = txn.exec_prepared(statement,params);
                 txn.commit();
 
                 for (const auto &row: result) {
