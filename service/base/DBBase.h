@@ -98,6 +98,8 @@ namespace DB {
 
         for (const auto& col : column_name) {
             result.emplace_back("SortedBy" + col, "ORDER BY " + col + " ");
+            result.emplace_back("SortedBy" + col + "ASC", "ORDER BY " + col + " ASC ");
+            result.emplace_back("SortedBy" + col + "DESC", "ORDER BY " + col + " DESC ");
         }
 
         return result;

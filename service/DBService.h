@@ -21,7 +21,7 @@ namespace DB {
         pqxx::connection conn;
 
         void prepareSQLStatements(const std::vector<std::pair<std::string, std::string> > &list) {
-            for (const auto &[fst, snd]: list) {
+\            for (const auto &[fst, snd]: list) {
                 conn.prepare(fst, snd);
             }
         }
@@ -167,6 +167,9 @@ namespace DB {
                     }
                 }
 
+                // if (order == SortOrder::Descending) {
+                //     sortClause += " DESC";
+                // }
                 // if (order == SortOrder::Descending) {
                 //     sortClause += " DESC";
                 // }
