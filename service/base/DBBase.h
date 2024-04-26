@@ -50,17 +50,24 @@ namespace DB {
                     sql.second.append(arg.second);
                 }
             } else if constexpr (std::is_same_v<Arg, std::vector<std::pair<std::string, std::string> > >) {
-                int sizeSql = sqls.size();
-                std::vector<std::pair<std::string, std::string> > tmp(sqls);
-                for (int k = 0; k < (arg.size() -1); ++k) {
-                    sqls.insert(sqls.end(), tmp.begin(),tmp.end());
-                }
-                for (int k = 0; k < sizeSql; ++k) {
-                    for (int l = 0; l < arg.size(); ++l) {
-                        sqls[k * arg.size() + l].first.append(arg[l].first);
-                        sqls[k * arg.size() + l].second.append(arg[l].second);
+                // int sizeSql = sqls.size();
+                // std::vector<std::pair<std::string, std::string> > tmp(sqls);
+                // for (int k = 0; k < (arg.size() -1); ++k) {
+                //     sqls.insert(sqls.end(), tmp.begin(),tmp.end());
+                // }
+                // for (int k = 0; k < sizeSql; ++k) {
+                //     for (int l = 0; l < arg.size(); ++l) {
+                //         sqls[k * arg.size() + l].first.append(arg[l].first);
+                //         sqls[k * arg.size() + l].second.append(arg[l].second);
+                //     }
+                // }
+                std::vector<std::pair<std::string, std::string> > tmp;
+                for (auto sql : sqls) {
+                    for (auto element : arg) {
+                        tmp.emplace_back(sql.first + element.first,sql.second + element.second);
                     }
                 }
+                sqls = tmp;
             }
         }
     }
@@ -98,6 +105,8 @@ namespace DB {
 
         for (const auto& col : column_name) {
             result.emplace_back("SortedBy" + col, "ORDER BY " + col + " ");
+            result.emplace_back("SortedBy" + col + "ASC", "ORDER BY " + col + " ASC ");
+            result.emplace_back("SortedBy" + col + "DESC", "ORDER BY " + col + " DESC ");
         }
 
         return result;

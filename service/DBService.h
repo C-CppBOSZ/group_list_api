@@ -167,9 +167,9 @@ namespace DB {
                     }
                 }
 
-                // if (order == SortOrder::Descending) {
-                //     sortClause += " DESC";
-                // }
+                if (order == SortOrder::Descending) {
+                    statement += "DESC";
+                }
 
                 if (pageSize > 0) {
                     statement += paginatSQL.first;

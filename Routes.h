@@ -181,9 +181,9 @@ namespace routes {
             try {
                 std::string sortOrder_params = req.url_params.get("SortOrder");
                 if (!sortOrder_params.empty()) {
-                    if (sortOrder_params == "ASC")
+                    if (sortOrder_params == "asc")
                         sortOrder = DB::SortOrder::Ascending;
-                    if (sortOrder_params == "DES")
+                    if (sortOrder_params == "desc")
                         sortOrder = DB::SortOrder::Descending;
                 }
             } catch (const std::exception &e) {
